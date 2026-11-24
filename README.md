@@ -6,11 +6,7 @@
 
 Tiện ích Chrome / Edge để nhập danh sách code Delta Force trên trang đổi quà chính thức của Garena. Mã nguồn để công khai, không qua bước build: file bạn đọc trên GitHub là file được cài vào trình duyệt.
 
-Phiên bản hiện tại: **1.0.6** · [Nhật ký thay đổi](CHANGELOG.md)
-
-Bản 1.0.3 chỉ chạy trên trang Garena. Bản **1.1.0** (pre-release trên Releases) có thêm bản quốc tế thử nghiệm cho trang playdeltaforce.com; chỉ cài bản đó nếu bạn cần trang quốc tế.
-
-Bản trước khi viết lại (trước đây đánh số 1.9.9) được đánh số lại thành **0.5.0 beta** và chỉ giữ trong lịch sử mã (tag `v0.5.0`, commit `83f3cfb`) để đối chiếu, không phát hành file zip. Hãy dùng bản mới nhất.
+Phiên bản hiện tại: **1.0.0** · [Nhật ký thay đổi](CHANGELOG.md)
 
 Trang đổi code: https://redeem.df.garena.sg/vi/cdkgarena.html
 
@@ -48,14 +44,14 @@ Tiện ích vẫn là công cụ nhập tự động trên tài khoản bạn đ
 
 Cần Chrome hoặc Edge từ phiên bản 111. Không dùng được trên Chrome điện thoại.
 
-1. Tải `df-code-garena-1.0.6.zip` từ [Releases](https://github.com/toilabaothien19-web/redeem.df.garena/releases) của kho này. Không cài file đính kèm trong bài viết lạ, nhóm chat, hoặc kho fork chưa đối chiếu.
+1. Tải `df-code-garena-1.0.0.zip` từ [Releases](https://github.com/toilabaothien19-web/redeem.df.garena/releases) của kho này. Không cài file đính kèm trong bài viết lạ, nhóm chat, hoặc kho fork chưa đối chiếu.
 2. Đối chiếu hash như mục [Tự kiểm tra an toàn](#tự-kiểm-tra-an-toàn). Hash lệch thì xóa và không dùng.
 3. Nếu máy đã có thư mục bản cũ, xóa thư mục đó. Không giải nén đè.
 4. Giải nén. Bên trong là thư mục `df-code-garena`. Tên file zip có số phiên bản, tên thư mục thì giữ nguyên.
 5. Mở `chrome://extensions` hoặc `edge://extensions`, bật **Chế độ dành cho nhà phát triển**.
 6. Bấm **Tải tiện ích đã giải nén** và chọn cả thư mục `df-code-garena`.
 
-Nâng cấp từ bản cũ (0.5.0 beta, hay 1.9.9 theo số cũ): xóa thư mục cũ, giải nén bản mới vào đúng chỗ đó, rồi **bấm nút tải lại trên thẻ tiện ích** trong `chrome://extensions`. Chỉ khởi động lại trình duyệt thì chưa đủ: Chrome vẫn chạy service worker của bản cũ. Log, danh sách và hạn mức đã dùng vẫn giữ nguyên. Trang đổi code đang mở thì bấm F5.
+Nâng cấp từ bản đã cài trước: xóa thư mục cũ, giải nén bản mới vào đúng chỗ đó, rồi **bấm nút tải lại trên thẻ tiện ích** trong `chrome://extensions`. Chỉ khởi động lại trình duyệt thì chưa đủ: Chrome vẫn chạy service worker của bản cũ. Log, danh sách và hạn mức đã dùng vẫn giữ nguyên. Trang đổi code đang mở thì bấm F5.
 
 Cũng có thể tải mã nguồn (Code → Download ZIP hoặc `git clone`) rồi chọn thư mục gốc của kho khi bấm **Tải tiện ích đã giải nén**. Thư mục `tests` và `tools` không ảnh hưởng gì tới tiện ích.
 
@@ -140,7 +136,7 @@ Nút **Sửa tự động** sửa mọi code sửa được, chỉ chừa chữ 
 
 Cập nhật tiện ích mà quên bấm tải lại thì lần mở popup đầu tiên cũng tự sửa log lưu từ bản cũ.
 
-**Tải log lên** để gộp file log đã xuất (của bản này, hoặc của 0.5.0 beta / 1.9.9 cũ), tối đa 2 MB. Lượt trùng không bị thêm lại. Lỗi tạm thời mà bản cũ ghi là "lỗi" được tính lại thành "chưa rõ". Sau khi nạp, popup cho biết bao nhiêu code trong danh sách hiện tại đã có trong log.
+**Tải log lên** để gộp file CSV vừa xuất hoặc file .txt xuất từ trước, tối đa 2 MB. Lượt trùng không bị thêm lại. Lỗi tạm thời mà file cũ ghi là "lỗi" được tính lại thành "chưa rõ". Sau khi nạp, popup cho biết bao nhiêu code trong danh sách hiện tại đã có trong log.
 
 **Xóa log** xóa toàn bộ lượt đã ghi. Sau đó các code đó không còn được bỏ qua khi chạy lại, nên xuất log trước khi xóa. Hạn mức đã dùng không bị xóa theo.
 
@@ -158,11 +154,11 @@ File `SHA256SUMS` nằm **trong** zip chỉ chứng minh các file khớp với 
 Hash của file zip:
 
 ```bash
-sha256sum df-code-garena-1.0.6.zip
+sha256sum df-code-garena-1.0.0.zip
 ```
 
 ```powershell
-(Get-FileHash -Algorithm SHA256 .\df-code-garena-1.0.6.zip).Hash.ToLower()
+(Get-FileHash -Algorithm SHA256 .\df-code-garena-1.0.0.zip).Hash.ToLower()
 ```
 
 Hash từng file, đứng trong thư mục `df-code-garena` vừa giải nén:
