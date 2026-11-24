@@ -17,12 +17,13 @@
     "suspects", "suspectTitle", "suspectList", "suspectMore", "suspectHint", "fixSuspects",
     "protect", "protectInfo", "freePace", "randomGap", "gapBlock", "gap", "gapValue", "skipLogged",
     "statTotal", "statFresh", "statQueue", "skipNote", "quota", "eta", "start", "pause", "resume", "stop", "retryErrors", "progressBox", "barWrap", "bar", "runTally",
-    "progress", "logCount", "fAll", "fOk", "fError", "fUnknown", "log", "logMore", "export", "importLog", "clearLog",
-    "logFile", "ask", "askText", "askYes", "askNo",
+    "progress", "logCount", "fAll", "fOk", "fUsed", "fError", "fUnknown", "log", "logMore", "export", "importLog", "clearLog",
+    "logFile", "jobsCard", "jobCount", "jobs", "ask", "askText", "askYes", "askNo",
   ].forEach(function (id) { el[id] = $(id); });
 
   const model = {
     log: [],
+    jobs: [],
     run: null,
     attempts: [],
     meta: {},
@@ -213,9 +214,10 @@
   }
 
   function describeOverlap(ov, skipLogged) {
-    const done = ov.ok + ov.error;
+    const done = ov.ok + ov.used + ov.error;
     const parts = [];
     if (ov.ok) parts.push(ov.ok + " dùng được");
+    if (ov.used) parts.push(ov.used + " đã dùng");
     if (ov.error) parts.push(ov.error + " lỗi");
     let text = "";
     if (done && skipLogged) text = "Bỏ qua " + done + " code đã có trong log: " + parts.join(", ") + ".";
@@ -418,7 +420,9 @@
       el.barWrap.setAttribute("aria-valuemax", String(run.total));
       el.barWrap.setAttribute("aria-valuenow", String(index));
       const t = run.tally || {};
-      const bits = [index + "/" + run.total + " code", (t.ok || 0) + " dùng được", (t.error || 0) + " lỗi"];
+      const bits = [index + "/" + run.total + " code", (t.ok || 0) + " dùng được"];
+      if (t.used) bits.push(t.used + " đã dùng");
+      bits.push((t.error || 0) + " lỗi");
       if (t.unknown) bits.push(t.unknown + " chưa rõ");
       if (run.skipped) bits.push("bỏ qua " + run.skipped + " code đã có trong log");
       put(el.runTally, bits.join(" · "));
@@ -455,9 +459,9 @@
   }
 
   function makeEntry(e, fresh) {
-    const status = e.status === "ok" || e.status === "unknown" ? e.status : "error";
+    const status = e.status === "ok" || e.status === "unknown" || e.status === "used" ? e.status : "error";
     const li = document.createElement("li");
-    li.className = status === "ok" ? "ok" : status === "unknown" ? "wait" : "bad";
+    li.className = status === "ok" ? "ok" : status === "used" ? "used" : status === "unknown" ? "wait" : "bad";
     if (fresh) li.classList.add("fresh");
 
     const head = document.createElement("div");
@@ -473,7 +477,7 @@
     code.appendChild(document.createTextNode(e.code));
     const tag = document.createElement("span");
     tag.className = "tag";
-    tag.textContent = status === "ok" ? "Dùng được" : status === "unknown" ? "Chưa rõ" : "Lỗi";
+    tag.textContent = status === "ok" ? "Dùng được" : status === "used" ? "Đã dùng" : status === "unknown" ? "Chưa rõ" : "Lỗi";
     head.append(code, tag);
 
     const detail = document.createElement("span");
@@ -488,12 +492,12 @@
     const copy = document.createElement("button");
     copy.type = "button";
     copy.className = "small";
-    copy.textContent = status === "error" ? "Chép mã lỗi" : "Chép code";
+    copy.textContent = status === "error" ? "Chép mã lỗi" : status === "used" ? "Chép kết quả" : "Chép code";
     copy.addEventListener("click", function () {
       const text = status === "ok" ? e.code : e.code + "\t" + (e.detail || "");
       copyText(text, function () {
         copy.textContent = "Đã chép";
-        setTimeout(function () { copy.textContent = status === "error" ? "Chép mã lỗi" : "Chép code"; }, 1200);
+        setTimeout(function () { copy.textContent = status === "error" ? "Chép mã lỗi" : status === "used" ? "Chép kết quả" : "Chép code"; }, 1200);
       });
     });
     foot.append(time, copy);
@@ -506,6 +510,7 @@
     const counts = P.tally(model.log);
     put(el.fAll, counts.all);
     put(el.fOk, counts.ok);
+    put(el.fUsed, counts.used);
     put(el.fError, counts.error);
     put(el.fUnknown, counts.unknown);
     put(el.logCount, counts.all ? counts.all + " lượt" : "");
@@ -522,7 +527,7 @@
     for (let i = model.log.length - 1; i >= 0 && shown < VIEW_CAP; i--) {
       const e = model.log[i];
       if (!e) continue;
-      const status = e.status === "ok" || e.status === "unknown" ? e.status : "error";
+      const status = e.status === "ok" || e.status === "unknown" || e.status === "used" ? e.status : "error";
       if (model.filter !== "all" && status !== model.filter) continue;
       frag.appendChild(makeEntry(e, changedTop && shown === 0 && e === newest));
       shown++;
@@ -546,6 +551,50 @@
     el.importLog.disabled = active;
   }
 
+  function renderJobs() {
+    const jobs = model.jobs || [];
+    el.jobsCard.hidden = !jobs.length;
+    put(el.jobCount, jobs.length ? jobs.length + "/30" : "");
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < jobs.length; i++) frag.appendChild(makeJobRow(jobs[i]));
+    el.jobs.textContent = "";
+    el.jobs.appendChild(frag);
+  }
+
+  function makeJobRow(job) {
+    const li = document.createElement("li");
+    const when = document.createElement("b");
+    when.className = "when";
+    when.textContent = (P.entryTime({ at: job.endedAt || job.startedAt }) || "—") + (job.phase === "done" ? " · xong" : " · dừng");
+    const meta = document.createElement("p");
+    meta.className = "meta";
+    const bits = [job.ok + " dùng được", job.used + " đã dùng", job.error + " lỗi"];
+    if (job.unknown) bits.push(job.unknown + " chưa rõ");
+    meta.textContent = bits.join(" · ");
+    const row = document.createElement("div");
+    row.className = "row";
+    const csv = document.createElement("button");
+    csv.type = "button";
+    csv.className = "small";
+    csv.textContent = "Xuất CSV";
+    csv.addEventListener("click", function () {
+      download("df-code-lan-chay-" + (job.id || "job") + ".csv", P.formatCsv(job.entries));
+      flash("Đã xuất CSV lần chạy này. Đọc file trước khi chia sẻ.", "ok");
+    });
+    row.appendChild(csv);
+    const errors = P.jobErrorCodes(job);
+    if (errors.length) {
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "small";
+      retry.textContent = "Thử lại " + errors.length + " lỗi";
+      retry.addEventListener("click", function () { fillErrors(errors, "của lần chạy này"); });
+      row.appendChild(retry);
+    }
+    li.append(when, meta, row);
+    return li;
+  }
+
   function renderDynamic() {
     const now = Date.now();
     renderLogButtons(now);
@@ -558,6 +607,7 @@
   function renderAll() {
     renderDynamic();
     renderLog();
+    renderJobs();
   }
 
   /* ---------- Tab đổi quà ---------- */
@@ -623,6 +673,10 @@
     if (K.log in data) {
       model.log = Array.isArray(data[K.log]) ? data[K.log].filter(function (e) { return e && P.isCodeToken(e.code); }) : [];
       renderLog();
+    }
+    if (K.jobs in data) {
+      model.jobs = P.normalizeJobs(data[K.jobs]);
+      renderJobs();
     }
     renderDynamic();
   }
@@ -792,12 +846,11 @@
     flash("Tiếp tục nhập các code còn lại.");
   });
 
-  el.retryErrors.addEventListener("click", async function () {
+  async function fillErrors(codes, scope) {
     if (runActive()) {
       flash("Dừng hoặc chờ hết phiên trước khi đưa code lỗi vào ô.", "warn");
       return;
     }
-    const codes = P.errorCodes(model.log, SITE);
     if (!codes.length) {
       flash("Không có code lỗi để thử lại.", "warn");
       return;
@@ -805,7 +858,7 @@
     const next = codes.join("\n");
     const current = el.codes.value.trim();
     if (current && current !== next) {
-      const ok = await ask("Thay danh sách đang có bằng " + codes.length + " code lỗi?", "Thay danh sách");
+      const ok = await ask("Thay danh sách đang có bằng " + codes.length + " code lỗi " + scope + "?", "Thay danh sách");
       if (!ok) return;
     }
     const turnedOff = el.skipLogged.checked;
@@ -815,10 +868,14 @@
     }
     setCodes(next);
     flash(
-      "Đã đưa " + codes.length + " code lỗi vào ô."
+      "Đã đưa " + codes.length + " code lỗi " + scope + " vào ô."
         + (turnedOff ? " Đã tắt “Bỏ qua code đã có trong log” để nhập lại được. Bật lại sau khi chạy xong nếu muốn." : " Bấm Bắt đầu để nhập lại."),
       "ok",
     );
+  }
+
+  el.retryErrors.addEventListener("click", function () {
+    fillErrors(P.errorCodes(model.log, SITE), "trong log");
   });
 
   el.export.addEventListener("click", function () {
@@ -856,7 +913,7 @@
       const codes = analysis().codes;
       const ov = P.overlap(codes, merged, SITE);
       let text = "Đã đọc " + incoming.length + " lượt từ file, thêm " + added + " lượt mới.";
-      if (codes.length) text += " Đối chiếu danh sách hiện tại: " + (ov.ok + ov.error) + " code đã có trong log, " + (ov.fresh + ov.unknown) + " code sẽ nhập.";
+      if (codes.length) text += " Đối chiếu danh sách hiện tại: " + (ov.ok + ov.used + ov.error) + " code đã có trong log, " + (ov.fresh + ov.unknown) + " code sẽ nhập.";
       flash(text, "ok");
     } catch (e) {
       flash("Không đọc được file log.", "bad");
@@ -871,7 +928,7 @@
     }
     const sure = await ask(
       "Xóa toàn bộ " + model.log.length + " lượt trong log? Sau khi xóa, các code này không còn được bỏ qua khi chạy lại."
-        + " Hạn mức đã dùng vẫn được giữ. Muốn giữ lại thì bấm Hủy rồi Xuất CSV trước.",
+        + " Lần chạy vẫn giữ. Hạn mức đã dùng vẫn được giữ. Muốn giữ lại thì bấm Hủy rồi Xuất CSV trước.",
       "Xóa log",
     );
     if (!sure) return;
@@ -893,7 +950,7 @@
 
   if (hasChrome) {
     chrome.storage.local.get(
-      [K.draft, K.gap, K.random, K.skipLogged, K.protect, K.log, K.meta, K.run, K.attempts],
+      [K.draft, K.gap, K.random, K.skipLogged, K.protect, K.log, K.jobs, K.meta, K.run, K.attempts],
       function (data) {
         const stored = data || {};
         /* Quên bấm tải lại sau khi cập nhật thì service worker cũ không sửa log: popup tự sửa khi không có phiên chạy. */

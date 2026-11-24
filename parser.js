@@ -42,6 +42,7 @@
     skipLogged: "dfcode.skipLogged",
     protect: "dfcode.protect",
     log: "dfcode.log",
+    jobs: "dfcode.jobs",
     meta: "dfcode.meta",
     run: "dfcode.run",
     attempts: "dfcode.attempts",
@@ -65,6 +66,7 @@
     maxLogFileBytes: 2 * 1024 * 1024,
     maxLogText: 2200000,
     logCap: 5000,
+    jobCap: 30,
     detailCap: 500,
     /* Phiên "đang chạy" không cập nhật quá lâu thì coi như đã chết (tab đóng, trình duyệt tắt). */
     staleMs: 150 * SECOND,
@@ -804,7 +806,7 @@
     const list = Array.isArray(log) ? log : [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (e && (e.status === "ok" || e.status === "error") && isCodeToken(e.code) && onSite(e, site)) done.add(e.code);
+      if (e && (entryStatus(e) === "ok" || entryStatus(e) === "error" || entryStatus(e) === "used") && isCodeToken(e.code) && onSite(e, site)) done.add(e.code);
     }
     return done;
   }
@@ -829,7 +831,7 @@
     const queue = fresh.slice(0, room);
     let reason = "";
     if (!codes.length) reason = "Chưa có code hợp lệ.";
-    else if (!fresh.length) reason = "Các code này đã có trong log (đã nhập hoặc lỗi). Bỏ chọn “Bỏ qua code đã có trong log” nếu muốn nhập lại.";
+    else if (!fresh.length) reason = "Các code này đã có trong log (đã nhập, đã dùng hoặc lỗi). Bỏ chọn “Bỏ qua code đã có trong log” nếu muốn nhập lại.";
     else if (!g.ok) reason = g.reason;
     return {
       ok: !reason,
@@ -901,6 +903,15 @@
     return /(?<!(?:không|khong|chưa|chua) )thành công|redeemed successfully|redemption successful|(?<!not )(?<![a-z])success(?:ful|fully)?(?![a-z])|兑换成功/i.test(text || "");
   }
 
+  /* Code đã được dùng (400068), không phải code sai hay hết hạn. */
+  function looksUsed(text, serverCode) {
+    if (Number(serverCode) === 400068) return true;
+    const value = squash(text);
+    if (!value) return false;
+    if (/(?:^|\D)400068(?:\D|$)/.test(value) || /error_hint_400068/i.test(value)) return true;
+    return /đã được sử dụng|da duoc su dung|already (?:been )?(?:redeemed|used)|has been (?:redeemed|used)|cdkey has reached the redemption limit|已使用|已经使用|已被使用|已兑换|已领取/i.test(value);
+  }
+
   function isAccountRisk(text) {
     const value = squash(text);
     if (!value) return false;
@@ -958,8 +969,9 @@
     else if (serverCode === 0 && failed) status = "unknown";
     else if (serverCode === 0) status = "ok";
     else if (serverCode !== null && success) status = "unknown";
-    else if (serverCode !== null) status = "error";
+    else if (serverCode !== null) status = looksUsed(exact, serverCode) ? "used" : "error";
     else if (success && !failed) status = "ok";
+    else if (looksUsed(exact, null)) status = "used";
     else if (failed) status = "error";
     return { ok: status === "ok", status: status, serverCode: serverCode, detail: exact, httpStatus: picked.httpStatus || 0 };
   }
@@ -971,6 +983,7 @@
     let status = "error";
     if (!detail || (failed && success)) status = "unknown";
     else if (success && !failed) status = "ok";
+    else if (looksUsed(detail, null)) status = "used";
     return { ok: status === "ok", status: status, serverCode: null, detail: detail };
   }
 
@@ -1002,7 +1015,7 @@
     const http = r.source === "api" && r.raw ? Number(r.raw.httpStatus) || 0 : 0;
     if (status === "error" && (isTransientHttp(http) || looksTransient(detail))) status = "unknown";
     if (!detail && isTransientHttp(http)) detail = "Trang trả mã HTTP " + http + ".";
-    if (!detail) detail = status === "unknown" ? UNKNOWN_TEXT : status === "ok" ? "Thành công." : "Không rõ câu lỗi.";
+    if (!detail) detail = status === "unknown" ? UNKNOWN_TEXT : status === "ok" ? "Thành công." : status === "used" ? "Đã được sử dụng." : "Không rõ câu lỗi.";
     return {
       id: randomId(),
       at: toDate(now).toISOString(),
@@ -1055,7 +1068,15 @@
   /* ---------- Log ---------- */
 
   function normStatus(status) {
-    return status === "ok" || status === "unknown" ? status : "error";
+    return status === "ok" || status === "unknown" || status === "used" ? status : "error";
+  }
+
+  /* Lượt ghi "lỗi" nhưng câu là đã dùng hoặc lỗi tạm thời thì tính lại. */
+  function entryStatus(e) {
+    let status = normStatus(e && e.status);
+    if (status === "error" && looksTransient(e && e.detail)) status = "unknown";
+    else if (status === "error" && looksUsed(e && e.detail, e && e.serverCode)) status = "used";
+    return status;
   }
 
   /* Đọc giờ ghi trong file log: "19/11/2026 14:05:06" (từ 1.0.0) hoặc "14:05:06 19/11/2026" (0.5.0 beta). */
@@ -1075,10 +1096,8 @@
 
   function normalizeEntry(e) {
     if (!e || typeof e !== "object" || !isCodeToken(e.code)) return null;
-    let status = normStatus(e.status);
     const detail = squash(e.detail).slice(0, LIMITS.detailCap);
-    /* Log cũ có thể ghi lỗi tạm thời là "lỗi": đổi thành "chưa rõ" để code đó còn được nhập lại. */
-    if (status === "error" && looksTransient(detail)) status = "unknown";
+    const status = entryStatus({ status: e.status, detail: detail, serverCode: e.serverCode });
     const atText = typeof e.atText === "string" ? squash(e.atText).slice(0, 40) : "";
     let at = typeof e.at === "string" ? squash(e.at).slice(0, 40) : "";
     if (!at && atText) at = parseTimeText(atText);
@@ -1088,7 +1107,7 @@
       atText: at ? "" : atText,
       code: e.code,
       status: status,
-      detail: detail || (status === "ok" ? "Dùng được (từ log)." : status === "unknown" ? UNKNOWN_TEXT : "Lỗi (từ log)."),
+      detail: detail || (status === "ok" ? "Dùng được (từ log)." : status === "unknown" ? UNKNOWN_TEXT : status === "used" ? "Đã được sử dụng." : "Lỗi (từ log)."),
       serverCode: typeof e.serverCode === "number" && Number.isFinite(e.serverCode) ? e.serverCode : null,
       site: normSite(e.site),
     };
@@ -1110,7 +1129,7 @@
     let excess = list.length - limit;
     const passes = [
       function (e) { return best.get(e.code) !== e; },
-      function (e) { return normStatus(e.status) === "unknown"; },
+      function (e) { return entryStatus(e) === "unknown"; },
       function () { return true; },
     ];
     for (let p = 0; p < passes.length && excess > 0; p++) {
@@ -1128,26 +1147,26 @@
   }
 
   function tally(log) {
-    const out = { all: 0, ok: 0, error: 0, unknown: 0 };
+    const out = { all: 0, ok: 0, used: 0, error: 0, unknown: 0 };
     const list = Array.isArray(log) ? log : [];
     for (let i = 0; i < list.length; i++) {
       if (!list[i]) continue;
       out.all++;
-      out[normStatus(list[i].status)]++;
+      out[entryStatus(list[i])]++;
     }
     return out;
   }
 
-  /* Mỗi code một trạng thái tốt nhất: dùng được > lỗi > chưa rõ. Lượt mới hơn thắng nếu cùng hạng. */
+  /* Mỗi code một trạng thái tốt nhất: dùng được > đã dùng = lỗi > chưa rõ. Lượt mới hơn thắng nếu cùng hạng. */
   function bestByCode(log) {
-    const rank = { ok: 3, error: 2, unknown: 1 };
+    const rank = { ok: 3, used: 2, error: 2, unknown: 1 };
     const map = new Map();
     const list = Array.isArray(log) ? log : [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !isCodeToken(e.code)) continue;
       const prev = map.get(e.code);
-      if (!prev || rank[normStatus(e.status)] >= rank[normStatus(prev.status)]) map.set(e.code, e);
+      if (!prev || rank[entryStatus(e)] >= rank[entryStatus(prev)]) map.set(e.code, e);
     }
     return map;
   }
@@ -1157,7 +1176,7 @@
     const out = [];
     const list = (Array.isArray(log) ? log : []).filter(function (e) { return onSite(e, site); });
     bestByCode(list).forEach(function (e) {
-      if (normStatus(e.status) === "error" && isCodeToken(e.code)) out.push(e.code);
+      if (entryStatus(e) === "error" && isCodeToken(e.code)) out.push(e.code);
     });
     return out;
   }
@@ -1165,12 +1184,12 @@
   /* Đối chiếu danh sách code với log: mỗi code theo trạng thái tốt nhất trong log, hoặc chưa có. */
   function overlap(codes, log, site) {
     const best = bestByCode((Array.isArray(log) ? log : []).filter(function (e) { return e && onSite(e, site); }));
-    const out = { ok: 0, error: 0, unknown: 0, fresh: 0 };
+    const out = { ok: 0, used: 0, error: 0, unknown: 0, fresh: 0 };
     const list = Array.isArray(codes) ? codes : [];
     for (let i = 0; i < list.length; i++) {
       const e = best.get(list[i]);
       if (!e) out.fresh++;
-      else out[normStatus(e.status)]++;
+      else out[entryStatus(e)]++;
     }
     return out;
   }
@@ -1184,7 +1203,7 @@
     if (info.version) lines.push("Phiên bản: " + info.version);
     lines.push("Xuất lúc: " + formatTime(info.exportedAt || new Date().toISOString()));
     if (info.settings) lines.push("Chế độ: " + describePace(info.settings));
-    lines.push("Tổng: " + count.all + " lượt, " + count.ok + " dùng được, " + count.error + " lỗi, " + count.unknown + " chưa rõ");
+    lines.push("Tổng: " + count.all + " lượt, " + count.ok + " dùng được, " + count.used + " đã dùng, " + count.error + " lỗi, " + count.unknown + " chưa rõ");
     lines.push("");
     /* Lượt của bản quốc tế (chỉ có khi nạp log từ bản 1.1.0) có mục tóm tắt riêng "QUỐC TẾ —" và "QT" trước giờ ở CHI TIẾT. */
     const intlList = list.filter(function (e) { return normSite(e.site) === "intl"; });
@@ -1193,11 +1212,13 @@
     if (intlList.length) groups.push({ prefix: "QUỐC TẾ — ", list: intlList });
     for (let g = 0; g < groups.length; g++) {
       const ok = [];
+      const used = [];
       const bad = [];
       const wait = [];
       bestByCode(groups[g].list).forEach(function (e) {
-        const st = normStatus(e.status);
+        const st = entryStatus(e);
         if (st === "ok") ok.push(e);
+        else if (st === "used") used.push(e);
         else if (st === "error") bad.push(e);
         else wait.push(e);
       });
@@ -1205,6 +1226,10 @@
       lines.push("=== " + pre + "DÙNG ĐƯỢC (" + ok.length + ") ===");
       if (!ok.length) lines.push("(không có)");
       for (let a = 0; a < ok.length; a++) lines.push(ok[a].code);
+      lines.push("");
+      lines.push("=== " + pre + "ĐÃ DÙNG (" + used.length + ") ===");
+      if (!used.length) lines.push("(không có)");
+      for (let u = 0; u < used.length; u++) lines.push(used[u].code + "\t" + sanitizeText(used[u].detail));
       lines.push("");
       lines.push("=== " + pre + "LỖI (" + bad.length + ") ===");
       if (!bad.length) lines.push("(không có)");
@@ -1219,8 +1244,8 @@
     if (!list.length) lines.push("(chưa có lượt nhập nào)");
     for (let n = 0; n < list.length; n++) {
       const e = list[n];
-      const status = normStatus(e.status);
-      const tag = status === "ok" ? "OK" : status === "unknown" ? "CHƯA" : "LỖI";
+      const status = entryStatus(e);
+      const tag = status === "ok" ? "OK" : status === "used" ? "ĐÃDÙNG" : status === "unknown" ? "CHƯA" : "LỖI";
       const where = normSite(e.site) === "intl" ? "QT " : "";
       lines.push("[" + tag + "] " + where + (entryTime(e) || "—") + "  " + e.code + "  —  " + sanitizeText(e.detail));
     }
@@ -1242,8 +1267,8 @@
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !isCodeToken(e.code)) continue;
-      const status = normStatus(e.status);
-      const label = status === "ok" ? "Dùng được" : status === "unknown" ? "Chưa rõ" : "Lỗi";
+      const status = entryStatus(e);
+      const label = status === "ok" ? "Dùng được" : status === "used" ? "Đã dùng" : status === "unknown" ? "Chưa rõ" : "Lỗi";
       lines.push([
         e.code,
         label,
@@ -1303,6 +1328,7 @@
   function csvStatus(text) {
     const name = squash(text).toLowerCase();
     if (name === "ok" || /^(?:dùng được|dung duoc|thành công|thanh cong|success|successful)$/.test(name)) return "ok";
+    if (name === "used" || /^(?:đã dùng|da dung|đã sử dụng|da su dung)$/.test(name)) return "used";
     if (name === "unknown" || /^(?:chưa rõ|chua ro|chưa|chua)$/.test(name)) return "unknown";
     if (name === "error" || /^(?:lỗi|loi|thất bại|that bai|fail|failed)$/.test(name)) return "error";
     return "";
@@ -1369,13 +1395,14 @@
     }
     let kind = "other";
     if (/^(?:DÙNG ĐƯỢC|DUNG DUOC)/i.test(rest)) kind = "ok";
+    else if (/^(?:ĐÃ DÙNG|DA DUNG)/i.test(rest)) kind = "used";
     else if (/^(?:LỖI|LOI)/i.test(rest)) kind = "error";
     else if (/^(?:CHI TIẾT|CHI TIET)/i.test(rest)) kind = "detail";
     else if (/^(?:CHƯA RÕ|CHUA RO)/i.test(rest)) kind = "unknown";
     return { kind: kind, site: site };
   }
 
-  const DETAIL_RE = /^\[(OK|LỖI|LOI|ERROR|CHƯA|CHUA)\]\s*(.*?)\s{2,}([A-Za-z0-9_-]{4,80})\s+[—-](?:\s+(.*))?$/i;
+  const DETAIL_RE = /^\[(OK|LỖI|LOI|ERROR|CHƯA|CHUA|ĐÃDÙNG|DADUNG)\]\s*(.*?)\s{2,}([A-Za-z0-9_-]{4,80})\s+[—-](?:\s+(.*))?$/i;
 
   /* Đọc file log đã xuất (bản 1.0.0 trở lên và bản 0.5.0 beta, tức 1.9.9 cũ). Phần CHI TIẾT giữ đủ từng lượt; code chỉ có ở phần trên được thêm sau. */
   function parseLog(text) {
@@ -1412,12 +1439,12 @@
           site: site,
           atText: time === "—" || time === "-" ? "" : time,
           code: m[3],
-          status: tag === "OK" ? "ok" : tag === "CHƯA" || tag === "CHUA" ? "unknown" : "error",
+          status: tag === "OK" ? "ok" : tag === "CHƯA" || tag === "CHUA" ? "unknown" : tag === "ĐÃDÙNG" || tag === "DADUNG" ? "used" : "error",
           detail: m[4] || "",
         });
       } else if (section === "ok") {
         if (isCodeToken(line)) fromSections.push({ code: line, status: "ok", detail: "Dùng được (từ log).", site: sectionSite });
-      } else if (section === "error" || section === "unknown") {
+      } else if (section === "error" || section === "unknown" || section === "used") {
         const bits = line.indexOf("\t") === -1 ? line.split(/\s{2,}/) : line.split("\t");
         const code = bits[0].trim();
         if (isCodeToken(code)) fromSections.push({ code: code, status: section, detail: bits.slice(1).join(" "), site: sectionSite });
@@ -1473,6 +1500,98 @@
       return !old || e.code !== old.code || e.status !== old.status || e.at !== (old.at || "");
     });
     return { log: changed ? fixed : log, changed: changed };
+  }
+
+  /* ---------- Lịch sử lần chạy ---------- */
+
+  function makeJob(run, entries) {
+    const src = Array.isArray(entries) ? entries : [];
+    const list = [];
+    for (let i = 0; i < src.length && list.length < 100; i++) {
+      const e = normalizeEntry(src[i]);
+      if (!e) continue;
+      list.push({ code: e.code, status: e.status, detail: e.detail, at: e.at, site: e.site });
+    }
+    if (!list.length) return null;
+    const count = tally(list);
+    const startedNum = run && Number(run.startedAt);
+    const startedAt = Number.isFinite(startedNum) && startedNum > 0 ? new Date(startedNum).toISOString() : (list[0].at || "");
+    return {
+      id: randomId(),
+      startedAt: startedAt,
+      endedAt: new Date().toISOString(),
+      phase: run && run.phase === "done" ? "done" : "stopped",
+      note: sanitizeText(run && run.note, 180),
+      total: Math.max(list.length, Math.round(Number(run && run.total) || 0)),
+      ok: count.ok,
+      used: count.used,
+      error: count.error,
+      unknown: count.unknown,
+      entries: list,
+    };
+  }
+
+  function normalizeJob(job) {
+    if (!job || typeof job !== "object") return null;
+    const id = typeof job.id === "string" ? job.id.slice(0, 40) : "";
+    if (!id) return null;
+    const entries = [];
+    const src = Array.isArray(job.entries) ? job.entries : [];
+    for (let i = 0; i < src.length && entries.length < 100; i++) {
+      const e = normalizeEntry(src[i]);
+      if (!e) continue;
+      entries.push({ code: e.code, status: e.status, detail: e.detail, at: e.at, site: e.site });
+    }
+    if (!entries.length) return null;
+    const count = tally(entries);
+    return {
+      id: id,
+      startedAt: typeof job.startedAt === "string" ? job.startedAt.slice(0, 40) : "",
+      endedAt: typeof job.endedAt === "string" ? job.endedAt.slice(0, 40) : "",
+      phase: job.phase === "done" ? "done" : "stopped",
+      note: sanitizeText(job.note, 180),
+      total: Math.max(entries.length, Math.round(Number(job.total) || 0)),
+      ok: count.ok,
+      used: count.used,
+      error: count.error,
+      unknown: count.unknown,
+      entries: entries,
+    };
+  }
+
+  function normalizeJobs(jobs) {
+    const src = Array.isArray(jobs) ? jobs : [];
+    const out = [];
+    const seen = new Set();
+    for (let i = 0; i < src.length && out.length < LIMITS.jobCap; i++) {
+      const job = normalizeJob(src[i]);
+      if (!job || seen.has(job.id)) continue;
+      seen.add(job.id);
+      out.push(job);
+    }
+    return out;
+  }
+
+  function pushJob(jobs, job) {
+    const next = normalizeJob(job);
+    const list = normalizeJobs(jobs).filter(function (item) { return !next || item.id !== next.id; });
+    if (!next) return list;
+    return [next].concat(list).slice(0, LIMITS.jobCap);
+  }
+
+  /* Code lỗi của một lần chạy. Code đã dùng không được đưa vào để nhập lại. */
+  function jobErrorCodes(job) {
+    const item = normalizeJob(job);
+    if (!item) return [];
+    const out = [];
+    const seen = new Set();
+    for (let i = 0; i < item.entries.length; i++) {
+      const e = item.entries[i];
+      if (e.status !== "error" || seen.has(e.code)) continue;
+      seen.add(e.code);
+      out.push(e.code);
+    }
+    return out;
   }
 
   /* ---------- Trạng thái chạy ---------- */
@@ -1595,6 +1714,11 @@
     formatCsv: formatCsv,
     parseLog: parseLog,
     mergeLogs: mergeLogs,
+    makeJob: makeJob,
+    normalizeJob: normalizeJob,
+    normalizeJobs: normalizeJobs,
+    pushJob: pushJob,
+    jobErrorCodes: jobErrorCodes,
     isRunActive: isRunActive,
     isRedeemUrl: isRedeemUrl,
   });

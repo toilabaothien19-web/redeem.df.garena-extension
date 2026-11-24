@@ -233,7 +233,7 @@ test("mã số và câu chữ mâu thuẫn thì chưa xác định", () => {
 
 test("câu hộp thoại: thành công, lỗi, rỗng", () => {
   assert.equal(P.describeDialog("Đổi thành công!").status, "ok");
-  assert.equal(P.describeDialog("Code đã được sử dụng").status, "error");
+  assert.equal(P.describeDialog("Code đã được sử dụng").status, "used");
   assert.equal(P.describeDialog("").status, "unknown");
   assert.equal(P.describeDialog("Đổi không thành công").status, "error");
   assert.equal(P.describeDialog("Không thành công, code đã hết hạn").status, "error");
@@ -313,7 +313,7 @@ test("xuất log: mỗi code một trạng thái tốt nhất ở phần trên, 
   const text = P.formatLog(SAMPLE, { exportedAt: new Date(NOW).toISOString(), version: "1.0.0", settings: { protect: true } });
   assert.match(text, /=== DÙNG ĐƯỢC \(2\) ===\nDFOK0001\nDFBAD002\n/);
   assert.match(text, /=== LỖI \(0\) ===\n\(không có\)/);
-  assert.match(text, /Tổng: 4 lượt, 2 dùng được, 1 lỗi, 1 chưa rõ/);
+  assert.match(text, /Tổng: 4 lượt, 2 dùng được, 0 đã dùng, 1 lỗi, 1 chưa rõ/);
   assert.match(text, /\[CHƯA\] 19\/11\/2026 14:00:02  DFWAIT03  —  /);
 });
 
@@ -453,14 +453,14 @@ test("lỗi tạm thời ghi 'chưa rõ' để lần sau còn nhập lại; lỗ
     [{ source: "api", raw: { httpStatus: 502 } }, "unknown"],
     [{ source: "dialog", text: "Network error, please try again" }, "unknown"],
     [{ source: "dialog", text: "Thao tác quá nhiều lần, vui lòng thử lại sau" }, "unknown"],
-    [{ source: "api", raw: { code: 400068, msg: "The current cdkey has reached the redemption limit", screen: "error_hint_400068" } }, "error"],
+    [{ source: "api", raw: { code: 400068, msg: "The current cdkey has reached the redemption limit", screen: "error_hint_400068" } }, "used"],
     [{ source: "api", raw: { code: 400067, msg: "The current user has reached the redemption limit of cdkey group" } }, "error"],
     [{ source: "dialog", text: "Code không hợp lệ, vui lòng thử lại" }, "error"],
   ];
   for (const [result, want] of cases) {
     const e = P.toEntry("DFTEMP01", result, NOW);
     assert.equal(e.status, want, JSON.stringify(result));
-    assert.equal(P.settledCodes([e]).has("DFTEMP01"), want === "error");
+    assert.equal(P.settledCodes([e]).has("DFTEMP01"), want === "error" || want === "used");
   }
   assert.equal(P.toEntry("DFTEMP02", { source: "api", raw: { httpStatus: 502 } }, NOW).detail, "Trang trả mã HTTP 502.");
 });
@@ -483,7 +483,7 @@ test("log cũ ghi lỗi tạm thời là 'lỗi' được đổi thành 'chưa r
     "GARENADFNY2501E034\terror_hint_400068 | The current cdkey has reached the redemption limit",
   ].join("\n");
   const back = P.parseLog(text);
-  assert.deepEqual(back.map((e) => e.code + ":" + e.status), ["DFOLD429:unknown", "DFOLDRISK:unknown", "GARENADFNY2501E034:error"]);
+  assert.deepEqual(back.map((e) => e.code + ":" + e.status), ["DFOLD429:unknown", "DFOLDRISK:unknown", "GARENADFNY2501E034:used"]);
   const skip = P.settledCodes(back);
   assert.ok(!skip.has("DFOLD429") && !skip.has("DFOLDRISK") && skip.has("GARENADFNY2501E034"));
 });
@@ -512,7 +512,7 @@ test("đọc đúng file log thật xuất từ bản 1.0.0", () => {
     "[OK] 19/11/2026 11:09:08  ga_aurora  —  Đã nhận thành công! Vui lòng kiểm tra hộp thư trong game của bạn.", "",
   ].join("\n");
   const back = P.parseLog(real);
-  assert.deepEqual(back.map((e) => e.code + ":" + e.status), ["DFVNA4T8Z6P3:ok", "GARENADFCBT2503X9D1:error", "CRAZYPARTY1710:error", "ga_aurora:ok"]);
+  assert.deepEqual(back.map((e) => e.code + ":" + e.status), ["DFVNA4T8Z6P3:ok", "GARENADFCBT2503X9D1:used", "CRAZYPARTY1710:error", "ga_aurora:ok"]);
   assert.ok(back.every((e) => e.at));
   const pl = P.plan({ codes: ["DFVNA4T8Z6P3", "ga_aurora", "CRAZYPARTY1710", "DFNEW0001"], log: back, now: NOW });
   assert.equal(pl.skipped, 3);
@@ -577,7 +577,7 @@ test("đối chiếu danh sách với log theo trạng thái tốt nhất của 
     { code: "DFB00002", status: "error" },
     { code: "DFC00003", status: "unknown" },
   ];
-  assert.deepEqual(P.overlap(["DFA00001", "DFB00002", "DFC00003", "DFD00004"], log), { ok: 1, error: 1, unknown: 1, fresh: 1 });
+  assert.deepEqual(P.overlap(["DFA00001", "DFB00002", "DFC00003", "DFD00004"], log), { ok: 1, used: 0, error: 1, unknown: 1, fresh: 1 });
   const pl = P.plan({ codes: ["DFA00001", "DFB00002", "DFC00003", "DFD00004"], log, now: NOW });
   assert.equal(pl.skipped, 2);
   assert.deepEqual(pl.queue, ["DFD00004", "DFC00003"]);
@@ -616,7 +616,7 @@ test("sửa log lưu từ bản trước, chỉ báo thay đổi khi thật sự
   ];
   const first = P.migrateLog(old);
   assert.equal(first.changed, true);
-  assert.deepEqual(first.log.map((e) => e.status), ["unknown", "error"]);
+  assert.deepEqual(first.log.map((e) => e.status), ["unknown", "used"]);
   const second = P.migrateLog(first.log);
   assert.equal(second.changed, false);
   assert.equal(P.migrateLog([]).changed, false);
@@ -787,10 +787,10 @@ test("lượt bản quốc tế (nạp từ log 1.1.0) không làm bỏ qua code
   assert.deepEqual(g.queue, ["DFSAME02", "DFNEW001"]);
   const i = P.plan({ codes: codes, log: log, settings: { protect: true }, attempts: [], now: NOW, site: "intl" });
   assert.deepEqual(i.queue, ["DFSAME01", "DFNEW001"]);
-  assert.deepEqual(P.overlap(codes, log, "garena"), { ok: 0, error: 1, unknown: 0, fresh: 2 });
-  assert.deepEqual(P.overlap(codes, log, "intl"), { ok: 1, error: 0, unknown: 0, fresh: 2 });
+  assert.deepEqual(P.overlap(codes, log, "garena"), { ok: 0, used: 0, error: 1, unknown: 0, fresh: 2 });
+  assert.deepEqual(P.overlap(codes, log, "intl"), { ok: 1, used: 0, error: 0, unknown: 0, fresh: 2 });
   /* Không ghi bản: như trước, tính mọi lượt. */
-  assert.deepEqual(P.overlap(codes, log), { ok: 1, error: 1, unknown: 0, fresh: 1 });
+  assert.deepEqual(P.overlap(codes, log), { ok: 1, used: 0, error: 1, unknown: 0, fresh: 1 });
 });
 
 test("mã trang không coi là lỗi (601008, 503601) và hết phiên (300001) ghi chưa rõ", () => {
@@ -802,7 +802,7 @@ test("mã trang không coi là lỗi (601008, 503601) và hết phiên (300001) 
       assert.equal(P.judge(e, { source: "api", raw: { code: code } }, {}, { protect: true }).action, "stop");
     }
   }
-  assert.equal(P.describeApi({ code: 400068, msg: "CDK đã đạt giới hạn đổi." }).status, "error");
+  assert.equal(P.describeApi({ code: 400068, msg: "CDK đã đạt giới hạn đổi." }).status, "used");
 });
 
 test("file log của bản 1.1.0 có lượt bản quốc tế: nạp lại vẫn giữ riêng", () => {
@@ -865,4 +865,45 @@ test("file biểu tượng của mọi màu đều có và nằm trong gói", ()
       assert.ok(pack.includes('"' + file + '"'), "pack.mjs thiếu " + file);
     }
   }
+});
+
+test("đã dùng tách khỏi lỗi: 400068 và câu đã sử dụng, hết hạn vẫn là lỗi", () => {
+  const used = P.toEntry("DFUSED01", { source: "dialog", text: "Code đã được sử dụng" }, NOW);
+  const expired = P.toEntry("DFEXP001", { source: "dialog", text: "Code đã hết hạn" }, NOW);
+  const invalid = P.toEntry("DFBAD001", { source: "dialog", text: "Code không hợp lệ" }, NOW);
+  assert.equal(used.status, "used");
+  assert.equal(expired.status, "error");
+  assert.equal(invalid.status, "error");
+  assert.equal(P.judge(used, { source: "dialog" }, { streak: 4 }, { protect: true }).action, "continue");
+  const log = [used, expired];
+  assert.deepEqual(P.errorCodes(log), ["DFEXP001"]);
+  assert.ok(P.settledCodes(log).has("DFUSED01"));
+  const text = P.formatLog(log, {});
+  assert.match(text, /=== ĐÃ DÙNG \(1\) ===\nDFUSED01\t/);
+  assert.match(text, /\[ĐÃDÙNG\] /);
+  const back = P.parseLog(text);
+  assert.deepEqual(back.map((e) => e.status), ["used", "error"]);
+  const csv = P.formatCsv(log);
+  assert.match(csv, /DFUSED01,Đã dùng,/);
+  assert.equal(P.parseLog(csv)[0].status, "used");
+});
+
+test("lịch sử lần chạy giữ 30 lần mới nhất và không đưa code đã dùng vào thử lại", () => {
+  const entries = [
+    { code: "DFUSED01", status: "used", detail: "Code đã được sử dụng", at: new Date(NOW).toISOString() },
+    { code: "DFBAD001", status: "error", detail: "Code không hợp lệ", at: new Date(NOW + 1).toISOString() },
+  ];
+  const job = P.makeJob({ startedAt: NOW, phase: "done", note: "Đã nhập xong 2 code.", total: 2 }, entries);
+  assert.equal(job.used, 1);
+  assert.equal(job.error, 1);
+  assert.deepEqual(P.jobErrorCodes(job), ["DFBAD001"]);
+  let jobs = [];
+  for (let i = 0; i < 32; i++) {
+    jobs = P.pushJob(jobs, P.makeJob({ startedAt: NOW + i, phase: "stopped", note: "lần " + i, total: 1 }, [
+      { code: "DFJOB" + String(i).padStart(4, "0"), status: "error", detail: "sai", at: new Date(NOW + i).toISOString() },
+    ]));
+  }
+  assert.equal(jobs.length, 30);
+  assert.equal(jobs[0].entries[0].code, "DFJOB0031");
+  assert.equal(P.pushJob([{ id: "", entries: [{ code: "nope" }] }], null).length, 0);
 });

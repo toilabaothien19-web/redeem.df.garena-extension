@@ -30,7 +30,7 @@ Công khai mã nguồn không có nghĩa là mọi bản tải trên mạng đ�
 - Không có trình theo dõi, không gửi log về máy chủ nào.
 - Không nhúng mã nguồn của tiện ích nhập code khác.
 
-Danh sách code, log và tùy chọn chỉ nằm trong `chrome.storage.local` trên máy bạn, trừ khi chính bạn bấm xuất file.
+Danh sách code, log, lần chạy và tùy chọn chỉ nằm trong `chrome.storage.local` trên máy bạn, trừ khi chính bạn bấm xuất file.
 
 ## Việc tiện ích có làm
 
@@ -126,11 +126,13 @@ Nút **Sửa tự động** sửa mọi code sửa được, chỉ chừa chữ 
 ### Nhật ký
 
 - Mỗi lần nhập ghi nguyên câu trên trang và câu máy chủ, kèm mã lỗi. Token, email, liên kết và dãy số dài bị ẩn trước khi ghi.
-- **Dùng được**: code đổi thành công. **Lỗi**: máy chủ đã xét code và báo lỗi (hết lượt, không hợp lệ…). **Chưa rõ**: không đọc được kết quả, code chưa được gửi, hoặc trang báo lỗi tạm thời (quá nhiều lần, thử lại sau, lỗi mạng, HTTP 403/429/5xx). Code chưa rõ không bị bỏ qua lần sau.
+- **Dùng được**: code đổi thành công. **Đã dùng**: trang báo code đã được sử dụng, hoặc mã 400068. **Lỗi**: máy chủ đã xét code và báo lỗi khác (hết hạn, không hợp lệ…). **Chưa rõ**: không đọc được kết quả, code chưa được gửi, hoặc trang báo lỗi tạm thời (quá nhiều lần, thử lại sau, lỗi mạng, HTTP 403/429/5xx). Code chưa rõ không bị bỏ qua lần sau. Code đã dùng bị bỏ qua như code lỗi, và không bị đưa vào nút thử lại.
 - Lọc theo từng loại. **Chép mã lỗi** copy đúng dòng đó.
 - Log giữ tối đa 5000 lượt. Khi đầy, lượt cũ đã có lượt mới hơn của cùng code bị bỏ trước, rồi tới lượt chưa rõ, nên thông tin dùng để bỏ qua code được giữ lâu nhất có thể.
 
-**Đối chiếu với log.** Khi bật "Bỏ qua code đã có trong log", mỗi code trong danh sách được so với log theo kết quả tốt nhất của nó: đã dùng được hoặc đã lỗi thì bỏ qua, chưa rõ hoặc chưa có thì nhập. Ngay dưới ô số liệu, popup ghi rõ bỏ qua bao nhiêu code và vì sao. So khớp phân biệt chữ hoa/thường, để một code gõ sai hoa/thường không chặn code đúng. Code chưa có trong log được nhập trước; code từng ghi chưa rõ xếp xuống cuối, để một code cứ gặp lỗi tạm thời không chặn các code mới.
+**Đối chiếu với log.** Khi bật "Bỏ qua code đã có trong log", mỗi code trong danh sách được so với log theo kết quả tốt nhất của nó: đã dùng được, đã dùng hoặc đã lỗi thì bỏ qua, chưa rõ hoặc chưa có thì nhập. Ngay dưới ô số liệu, popup ghi rõ bỏ qua bao nhiêu code và vì sao. So khớp phân biệt chữ hoa/thường, để một code gõ sai hoa/thường không chặn code đúng. Code chưa có trong log được nhập trước; code từng ghi chưa rõ xếp xuống cuối, để một code cứ gặp lỗi tạm thời không chặn các code mới.
+
+**Lần chạy.** Mỗi lần bấm Bắt đầu, sau khi phiên kết thúc, được lưu riêng (tối đa 30 lần, chỉ trên máy). Mỗi dòng có nút xuất CSV của riêng lần đó và nút thử lại code lỗi của lần đó. Code đã dùng không nằm trong nút thử lại. Xóa log không xóa lần chạy.
 
 **Xuất CSV** thay cho file .txt. Cột là code, trạng thái, kết quả, thời gian và bản. Dòng đầu `sep=,` để Excel tiếng Việt tách đúng cột. Đọc file trước khi chia sẻ. File .txt xuất từ bản cũ vẫn nạp lại được.
 
@@ -229,7 +231,7 @@ Không có địa chỉ máy chủ thứ ba. Nếu bản bạn tải có URL l�
 | [sw.js](sw.js) | service worker | Chỉ đổi màu biểu tượng, hiện hoặc xóa số trên biểu tượng, dọn phiên bị bỏ dở |
 | [parser.js](parser.js) | mọi nơi | Logic thuần: đọc code, hạn mức, đọc kết quả, file log. Không DOM, không mạng |
 | [inject.js](inject.js) | trang Garena (MAIN) | Điền code, bấm Đổi, chỉ đọc phản hồi `RedeemCDKey`, trả kết quả qua `MessagePort` |
-| [runner.js](runner.js) | trang Garena (tách biệt) | Điều phối từng code, chỉ lưu log và trạng thái vào `chrome.storage.local` |
+| [runner.js](runner.js) | trang Garena (tách biệt) | Điều phối từng code, chỉ lưu log, lần chạy và trạng thái vào `chrome.storage.local` |
 | [popup.js](popup.js) | popup | Giao diện. Không có lệnh mạng |
 | [demo-codes.js](demo-codes.js) | popup | Danh sách Demo Code, tạo từ [demo-codes.txt](demo-codes.txt) |
 

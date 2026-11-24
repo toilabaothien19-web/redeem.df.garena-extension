@@ -85,7 +85,7 @@
       </div>
       <label class="check">
         <input id="skipLogged" type="checkbox" checked />
-        <span>Bỏ qua code đã có trong log, cả code đã nhập lẫn code lỗi</span>
+        <span>Bỏ qua code đã có trong log, cả code đã nhập, đã dùng lẫn code lỗi</span>
       </label>
     </section>
 
@@ -122,6 +122,7 @@
       <div class="filters" role="group" aria-label="Lọc nhật ký">
         <button type="button" class="chip" data-filter="all" aria-pressed="true">Tất cả <b id="fAll">0</b></button>
         <button type="button" class="chip ok" data-filter="ok" aria-pressed="false">Dùng được <b id="fOk">0</b></button>
+        <button type="button" class="chip used" data-filter="used" aria-pressed="false">Đã dùng <b id="fUsed">0</b></button>
         <button type="button" class="chip bad" data-filter="error" aria-pressed="false">Lỗi <b id="fError">0</b></button>
         <button type="button" class="chip wait" data-filter="unknown" aria-pressed="false">Chưa rõ <b id="fUnknown">0</b></button>
       </div>
@@ -135,8 +136,17 @@
       <input id="logFile" type="file" accept=".txt,.csv,text/plain,text/csv" hidden />
     </section>
 
+    <section class="card" id="jobsCard" hidden>
+      <div class="card-head">
+        <h2>Lần chạy</h2>
+        <span class="count" id="jobCount"></span>
+      </div>
+      <p class="note">30 lần gần nhất, chỉ trên máy này. Xóa log không xóa mục này.</p>
+      <ul id="jobs" class="jobs"></ul>
+    </section>
+
     <footer class="foot">
-      Không gửi dữ liệu đi đâu. Không đọc cookie, mật khẩu hay tên đăng nhập. Danh sách code và log chỉ nằm trên máy này.
+      Không gửi dữ liệu đi đâu. Không đọc cookie, mật khẩu hay tên đăng nhập. Danh sách code, log và lần chạy chỉ nằm trên máy này.
     </footer>
 
     <dialog id="ask" aria-labelledby="askText">

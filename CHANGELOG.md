@@ -22,7 +22,8 @@ Bảo vệ tài khoản
 Nhật ký
 
 - Ghi nguyên câu trên trang và câu máy chủ, kèm mã số. Token, email, liên kết và dãy số dài bị ẩn.
-- Dùng được, lỗi, chưa rõ. Lọc và chép từng dòng. Giữ tối đa 5000 lượt.
+- Dùng được, đã dùng, lỗi, chưa rõ. Đã dùng là code đã được sử dụng (câu “đã được sử dụng” hoặc mã 400068). Code hết hạn và code sai vẫn là lỗi. Lọc và chép từng dòng. Giữ tối đa 5000 lượt.
+- Mỗi lần bấm Bắt đầu được lưu thành một lần chạy, tối đa 30 lần, chỉ trên máy này. Mỗi lần chạy xuất CSV riêng và thử lại đúng code lỗi của lần đó. Code đã dùng không bị đưa vào thử lại.
 - Xuất CSV để mở bằng Excel. Tải log lên đọc được CSV này và file .txt xuất từ trước.
 
 Biểu tượng

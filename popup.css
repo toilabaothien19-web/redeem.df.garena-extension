@@ -395,6 +395,7 @@ button.small {
 
 .chip b { margin-left: 2px; color: var(--fg); font-variant-numeric: tabular-nums; }
 .chip.ok b { color: var(--ok); }
+.chip.used b { color: #9ad7ff; }
 .chip.bad b { color: var(--danger); }
 .chip.wait b { color: var(--warn); }
 .chip[aria-pressed="true"] { background: var(--surface-3); color: var(--fg); border-color: var(--muted); }
@@ -420,6 +421,7 @@ button.small {
 }
 
 .log li.ok { border-left-color: var(--ok); }
+.log li.used { border-left-color: #9ad7ff; }
 .log li.bad { border-left-color: var(--danger); }
 .log li.wait { border-left-color: var(--warn); }
 
@@ -448,6 +450,7 @@ button.small {
 
 .log .tag { flex: none; font-size: 10.5px; font-weight: 600; }
 .log .ok .tag { color: var(--ok); }
+.log .used .tag { color: #9ad7ff; }
 .log .bad .tag { color: var(--danger); }
 .log .wait .tag { color: var(--warn); }
 
@@ -488,8 +491,39 @@ button.small {
   to { box-shadow: 0 0 0 8px transparent; }
 }
 
+.jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.jobs li {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.jobs .when { font-variant-numeric: tabular-nums; }
+
+.jobs .meta {
+  margin: 2px 0 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.jobs .row { gap: 6px; }
+
+.jobs .row button { flex: 1 1 0; }
 .log li.fresh { animation: rise-in 0.34s ease; }
+.log li.wait.fresh { --glow: rgba(244, 191, 79, 0.4); animation: rise-in 0.34s ease, result-glow 0.7s ease; }
 .log li.ok.fresh { --glow: rgba(15, 247, 150, 0.5); animation: rise-in 0.34s ease, result-glow 0.7s ease; }
+.log li.used.fresh { --glow: rgba(154, 215, 255, 0.45); animation: rise-in 0.34s ease, result-glow 0.7s ease; }
 .log li.bad.fresh { --glow: rgba(255, 115, 99, 0.45); animation: rise-in 0.34s ease, result-glow 0.7s ease; }
 
 /* ---------- Chân trang và hộp hỏi ---------- */

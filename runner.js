@@ -244,7 +244,8 @@
 
   async function loop(queue, settings, skipped) {
     const ctx = { streak: 0, http5xx: 0 };
-    const tally = { ok: 0, error: 0, unknown: 0 };
+    const tally = { ok: 0, used: 0, error: 0, unknown: 0 };
+    const seen = [];
     let done = 0;
     let lost = false;
     let end = { phase: "done", note: "Đã nhập xong " + queue.length + " code." };
@@ -315,7 +316,11 @@
         const entry = P.toEntry(code, result, new Date(), SITE);
         await appendLog(entry);
         done++;
-        if (entry) tally[entry.status]++;
+        if (entry) {
+          seen.push(entry);
+          if (tally[entry.status] == null) tally.unknown++;
+          else tally[entry.status]++;
+        }
 
         const verdict = P.judge(entry, result, ctx, settings);
         if (verdict.action === "stop") {
@@ -340,6 +345,18 @@
       end = { phase: "stopped", note: "Đã dừng vì lỗi nội bộ. Phiên không bị kẹt. Nếu lặp lại, tải lại trang đổi code." };
     } finally {
       if (!lost) {
+        if (seen.length) {
+          try {
+            const stored = await get([K.jobs]);
+            const job = P.makeJob({
+              startedAt: state.startedAt,
+              phase: end.phase,
+              note: end.note,
+              total: queue.length,
+            }, seen);
+            if (job) await set({ [K.jobs]: P.pushJob(stored[K.jobs], job) });
+          } catch (err) {}
+        }
         try {
           await setRun(base({ phase: end.phase, note: end.note }));
         } catch (e) {}
@@ -383,7 +400,7 @@
         index: 0,
         skipped: plan.skipped,
         settings: settings,
-        tally: { ok: 0, error: 0, unknown: 0 },
+        tally: { ok: 0, used: 0, error: 0, unknown: 0 },
         current: "",
         wait: null,
         note: "Đang bắt đầu.",

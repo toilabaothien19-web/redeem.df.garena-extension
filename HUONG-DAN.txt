@@ -36,15 +36,18 @@ Dùng
    Biểu tượng xanh lá, số trên biểu tượng là số code còn lại. Biểu tượng chuyển đỏ khi có dù chỉ
    một code lỗi hoặc chưa rõ, và giữ đỏ tới lần chạy sau hoặc khi xóa log.
 6. Bấm Thử lại code lỗi để đưa vào ô những code có kết quả mới nhất là lỗi, rồi bấm Bắt đầu.
-   Code đã dùng được không bị đưa vào. Nếu đang bật bỏ qua code đã có trong log, mục đó được tắt
+   Code đã dùng được và code đã dùng không bị đưa vào. Nếu đang bật bỏ qua code đã có trong log, mục đó được tắt
    để những code lỗi này nhập lại được. Bật lại sau khi chạy xong nếu muốn.
-7. Nhật ký ghi nguyên câu trên trang và câu máy chủ, kèm mã số. Lọc theo Dùng được, Lỗi, Chưa rõ.
+7. Nhật ký ghi nguyên câu trên trang và câu máy chủ, kèm mã số. Lọc theo Dùng được, Đã dùng, Lỗi, Chưa rõ.
+   Đã dùng là code đã được sử dụng (câu trên trang hoặc mã 400068). Code hết hạn vẫn là lỗi.
    Chưa rõ nghĩa là không đọc được kết quả, code chưa được gửi, hoặc trang báo lỗi tạm thời
    (quá nhiều lần, thử lại sau, lỗi máy chủ); lần sau vẫn nhập lại.
-8. Bấm Xuất CSV để tải file .csv, mở được bằng Excel. Đọc file trước khi chia sẻ. Xóa log thì các code đó
+8. Mục Lần chạy giữ 30 lần bấm Bắt đầu gần nhất, chỉ trên máy này. Mỗi lần xuất CSV riêng
+   và thử lại đúng code lỗi của lần đó. Xóa log không xóa lần chạy.
+9. Bấm Xuất CSV để tải file .csv, mở được bằng Excel. Đọc file trước khi chia sẻ. Xóa log thì các code đó
    không còn được bỏ qua khi chạy lại, nên xuất trước khi xóa. File .txt của bản cũ vẫn nạp được.
-9. Bấm Tải log lên để nạp lại file đó (tối đa 2 MB). Popup cho biết bao nhiêu code trong danh sách
-   đã có trong log. Lần chạy sau bỏ qua code đã thành công và code lỗi.
+10. Bấm Tải log lên để nạp lại file đó (tối đa 2 MB). Popup cho biết bao nhiêu code trong danh sách
+   đã có trong log. Lần chạy sau bỏ qua code đã thành công, code đã dùng và code lỗi.
 
 Bảo mật
 - Mã tiện ích được viết riêng cho việc này. Không nhúng thư viện hay mã nguồn bên ngoài.
