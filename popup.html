@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DF Code Garena</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="top">
+      <img class="mark" src="icons/icon48.png" alt="" width="36" height="36" />
+      <div class="titles">
+        <h1>Nhập code Delta Force</h1>
+        <p class="ver" id="ver">DF Code Garena</p>
+      </div>
+    </header>
+
+    <section class="status" id="statusBox" data-tone="idle" aria-live="polite">
+      <span class="dot" aria-hidden="true"></span>
+      <p id="status">Đang kiểm tra trang…</p>
+      <button type="button" id="statusAction" class="small" hidden></button>
+    </section>
+
+    <section class="card" aria-labelledby="codesLabel">
+      <div class="card-head">
+        <label id="codesLabel" for="codes">Danh sách code</label>
+        <span id="count" class="count">0 code</span>
+      </div>
+      <textarea
+        id="codes"
+        rows="6"
+        maxlength="200000"
+        spellcheck="false"
+        autocomplete="off"
+        placeholder="Mỗi dòng một code. Dán trực tiếp hoặc mở file .txt. Dòng bắt đầu bằng # được bỏ qua."
+      ></textarea>
+      <p id="parseNote" class="note" hidden></p>
+      <div id="suspects" class="suspects" role="alert" hidden>
+        <p id="suspectTitle" class="suspects-title"></p>
+        <ul id="suspectList" class="suspect-list"></ul>
+        <p id="suspectMore" class="note" hidden></p>
+        <p id="suspectHint" class="note warn" hidden></p>
+        <button type="button" id="fixSuspects" class="small" hidden>Sửa tự động</button>
+      </div>
+      <div class="row tools">
+        <button type="button" id="pick">Mở file .txt</button>
+        <button type="button" id="demo">Demo Code</button>
+        <button type="button" id="clearCodes">Xóa danh sách</button>
+      </div>
+      <input id="file" type="file" accept=".txt,text/plain" hidden />
+    </section>
+
+    <section class="card" aria-label="Tốc độ nhập">
+      <label class="check strong">
+        <input id="protect" type="checkbox" checked />
+        <span>Bảo vệ tài khoản <em class="pill">khuyên dùng</em></span>
+      </label>
+      <p id="protectInfo" class="note">
+        Nghỉ ngẫu nhiên 20–30 giây giữa hai code. Tối đa 30 code mỗi lần bấm, 30 code mỗi 60 phút. Không giới hạn theo ngày.
+        5 lỗi liên tiếp thì tự nghỉ 30–60 giây rồi nhập tiếp.
+      </p>
+      <div id="freePace" class="fold is-closed" inert>
+        <div class="fold-inner">
+          <p class="note warn">
+            Đã tắt bảo vệ: tối đa 100 code mỗi lần bấm, 100 code mỗi 60 phút. Không giới hạn theo ngày. Không tự nghỉ sau chuỗi lỗi.
+          </p>
+          <label class="check">
+            <input id="randomGap" type="checkbox" />
+            <span>Nghỉ ngẫu nhiên 10–15 giây</span>
+          </label>
+          <div id="gapBlock" class="fold">
+            <div class="fold-inner">
+              <div class="gap-row">
+                <label for="gap">Khoảng cách</label>
+                <input id="gap" type="range" min="5" max="60" step="1" value="15" />
+                <output id="gapValue" for="gap">15 giây</output>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <label class="check">
+        <input id="skipLogged" type="checkbox" checked />
+        <span>Bỏ qua code đã có trong log, cả code đã nhập lẫn code lỗi</span>
+      </label>
+    </section>
+
+    <section class="card" aria-label="Chạy">
+      <ul class="stats">
+        <li><b id="statTotal">0</b><span>trong danh sách</span></li>
+        <li><b id="statFresh">0</b><span>chưa nhập</span></li>
+        <li class="hl"><b id="statQueue">0</b><span>lần này</span></li>
+      </ul>
+      <p id="skipNote" class="note"></p>
+      <p id="quota" class="note"></p>
+      <p id="eta" class="note"></p>
+      <div class="row">
+        <button type="button" id="start" class="primary" disabled>Bắt đầu</button>
+        <button type="button" id="stop" disabled>Dừng</button>
+      </div>
+      <div id="progressBox" class="progress" hidden>
+        <div class="bar" role="progressbar" aria-label="Tiến độ" aria-valuemin="0" id="barWrap">
+          <i id="bar"></i>
+        </div>
+        <p id="runTally" class="note"></p>
+      </div>
+      <p id="progress" class="note" aria-live="polite">Chưa chạy.</p>
+    </section>
+
+    <section class="card" aria-labelledby="logTitle">
+      <div class="card-head">
+        <h2 id="logTitle">Nhật ký</h2>
+        <span class="count" id="logCount"></span>
+      </div>
+      <div class="filters" role="group" aria-label="Lọc nhật ký">
+        <button type="button" class="chip" data-filter="all" aria-pressed="true">Tất cả <b id="fAll">0</b></button>
+        <button type="button" class="chip ok" data-filter="ok" aria-pressed="false">Dùng được <b id="fOk">0</b></button>
+        <button type="button" class="chip bad" data-filter="error" aria-pressed="false">Lỗi <b id="fError">0</b></button>
+        <button type="button" class="chip wait" data-filter="unknown" aria-pressed="false">Chưa rõ <b id="fUnknown">0</b></button>
+      </div>
+      <ul id="log" class="log"></ul>
+      <p id="logMore" class="note" hidden></p>
+      <div class="row tools">
+        <button type="button" id="export" disabled>Xuất log</button>
+        <button type="button" id="importLog">Tải log lên</button>
+        <button type="button" id="clearLog" disabled>Xóa log</button>
+      </div>
+      <input id="logFile" type="file" accept=".txt,text/plain" hidden />
+    </section>
+
+    <footer class="foot">
+      Không gửi dữ liệu đi đâu. Không đọc cookie, mật khẩu hay tên đăng nhập. Danh sách code và log chỉ nằm trên máy này.
+    </footer>
+
+    <dialog id="ask" aria-labelledby="askText">
+      <p id="askText"></p>
+      <div class="row">
+        <button type="button" id="askNo">Hủy</button>
+        <button type="button" id="askYes" class="primary">Đồng ý</button>
+      </div>
+    </dialog>
+
+    <script src="parser.js"></script>
+    <script src="demo-codes.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

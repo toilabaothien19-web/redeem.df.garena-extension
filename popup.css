@@ -1,0 +1,522 @@
+:root {
+  color-scheme: dark;
+  --bg: #0d110c;
+  --surface: #151b13;
+  --surface-2: #1d251a;
+  --surface-3: #263023;
+  --line: #2c3729;
+  --fg: #e8efe4;
+  --muted: #98a690;
+  /* Màu theo theme trang FADEX.VN: xanh lá Delta Force (.is-df). */
+  --accent: #0ff796;
+  --accent-light: #7bfbc5;
+  --accent-soft: rgba(15, 247, 150, 0.12);
+  --ink: #032016;
+  --ok: #0ff796;
+  --danger: #ff7363;
+  --danger-soft: rgba(255, 115, 99, 0.12);
+  --warn: #f4bf4f;
+  --warn-soft: rgba(244, 191, 79, 0.12);
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 380px;
+  max-width: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* Chrome chèn sẵn "body { font-size: 75% }" cho trang tiện ích, nên phải đặt font ngay trên body. */
+body {
+  padding: 12px 12px 14px;
+  font-family: "Segoe UI", "Be Vietnam Pro", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+button, input, textarea, output { font: inherit; color: inherit; }
+
+/* ---------- Đầu trang ---------- */
+
+.top {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.mark {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 8px;
+  background: #071018;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 650;
+}
+
+h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.ver {
+  margin: 1px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ---------- Trạng thái ---------- */
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.status p { margin: 0; flex: 1; font-size: 12px; }
+
+.status .dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.status[data-tone="ready"] { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.status[data-tone="ready"] .dot { background: var(--ok); }
+.status[data-tone="run"] { border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: var(--accent-soft); }
+.status[data-tone="run"] .dot { background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+.status[data-tone="warn"] { border-color: rgba(244, 191, 79, 0.4); background: var(--warn-soft); }
+.status[data-tone="warn"] .dot { background: var(--warn); }
+.status[data-tone="bad"] { border-color: rgba(255, 115, 99, 0.4); background: var(--danger-soft); }
+.status[data-tone="bad"] .dot { background: var(--danger); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ---------- Thẻ ---------- */
+
+.card {
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.card-head label { margin: 0; font-weight: 600; color: var(--fg); }
+
+.count {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+label { display: block; color: var(--muted); font-size: 12px; }
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 108px;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+textarea:focus-visible,
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note:empty { display: none; }
+.note.warn { color: var(--warn); }
+.note.bad { color: var(--danger); }
+.note.ok { color: var(--ok); }
+
+/* ---------- Cảnh báo ký tự sai ---------- */
+
+.suspects {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(244, 191, 79, 0.45);
+  border-radius: 8px;
+  background: var(--warn-soft);
+}
+
+.suspects-title { margin: 0; color: var(--warn); font-size: 12px; font-weight: 600; }
+
+.suspect-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.suspect-list li { font-size: 11.5px; line-height: 1.45; }
+
+.suspect-list .code {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.suspect-list mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--danger);
+  color: #1a0000;
+  font-weight: 700;
+}
+
+.suspect-list .fix { color: var(--ok); }
+.suspect-list .tag-ok { color: var(--ok); font-size: 10.5px; }
+.suspect-list .tag-guess { color: var(--warn); font-size: 10.5px; }
+.suspect-list .why { display: block; color: var(--muted); }
+.suspects button { margin-top: 8px; }
+
+/* ---------- Nút ---------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.row.tools button { flex: 1 1 0; }
+
+button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button:hover:not(:disabled) { background: var(--surface-3); }
+button:disabled { opacity: 0.45; cursor: default; }
+
+button.primary {
+  flex: 1;
+  min-height: 40px;
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+button.primary:hover:not(:disabled) { background: var(--accent-light); }
+
+#stop { min-height: 40px; min-width: 76px; }
+
+button.small {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  flex: none;
+}
+
+/* ---------- Ô chọn ---------- */
+
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 8px;
+  color: var(--fg);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.check:first-child { margin-top: 0; }
+.check.strong { font-size: 13px; font-weight: 600; }
+.check input { margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+.check input:disabled + span { opacity: 0.55; }
+
+.pill {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+
+.gap-row {
+  display: grid;
+  grid-template-columns: auto 1fr 4.2rem;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.gap-row input[type="range"] {
+  width: 100%;
+  min-height: 28px;
+  accent-color: var(--accent);
+}
+
+.gap-row output {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 0.25s ease, opacity 0.2s ease;
+}
+
+.fold.is-closed { grid-template-rows: 0fr; opacity: 0; }
+.fold-inner { overflow: hidden; min-height: 0; }
+
+/* ---------- Số liệu và tiến độ ---------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stats li {
+  padding: 6px 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  text-align: center;
+}
+
+.stats b {
+  display: block;
+  font-size: 17px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats span { color: var(--muted); font-size: 11px; }
+.stats .hl b { color: var(--accent); }
+.stats b.tick { animation: rise-in 0.3s ease; }
+
+.progress { margin-top: 10px; }
+
+.bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+.progress[data-phase="waiting"] .bar i { background: var(--warn); }
+.progress[data-phase="stopped"] .bar i { background: var(--danger); }
+
+/* ---------- Nhật ký ---------- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.chip b { margin-left: 2px; color: var(--fg); font-variant-numeric: tabular-nums; }
+.chip.ok b { color: var(--ok); }
+.chip.bad b { color: var(--danger); }
+.chip.wait b { color: var(--warn); }
+.chip[aria-pressed="true"] { background: var(--surface-3); color: var(--fg); border-color: var(--muted); }
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.log li {
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.log li.ok { border-left-color: var(--ok); }
+.log li.bad { border-left-color: var(--danger); }
+.log li.wait { border-left-color: var(--warn); }
+
+.log .head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.log b {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.log .where {
+  margin-right: 4px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.log .tag { flex: none; font-size: 10.5px; font-weight: 600; }
+.log .ok .tag { color: var(--ok); }
+.log .bad .tag { color: var(--danger); }
+.log .wait .tag { color: var(--warn); }
+
+.log .detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--fg);
+  opacity: 0.85;
+  word-break: break-word;
+}
+
+.log .foot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.log time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.log:empty::before {
+  content: "Log hiện ở đây sau mỗi lần nhập. Xuất file để giữ code dùng được và lỗi.";
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.log[data-filtered="1"]:empty::before { content: "Không có dòng nào ở mục này."; }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes result-glow {
+  from { box-shadow: 0 0 0 0 var(--glow, transparent); }
+  to { box-shadow: 0 0 0 8px transparent; }
+}
+
+.log li.fresh { animation: rise-in 0.34s ease; }
+.log li.ok.fresh { --glow: rgba(15, 247, 150, 0.5); animation: rise-in 0.34s ease, result-glow 0.7s ease; }
+.log li.bad.fresh { --glow: rgba(255, 115, 99, 0.45); animation: rise-in 0.34s ease, result-glow 0.7s ease; }
+
+/* ---------- Chân trang và hộp hỏi ---------- */
+
+.foot {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  padding: 0 8px;
+}
+
+dialog {
+  width: calc(100% - 32px);
+  max-width: 340px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--fg);
+}
+
+dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+dialog p { margin: 0; font-size: 13px; line-height: 1.5; }
+dialog .row { justify-content: flex-end; margin-top: 12px; }
+dialog .row button { flex: none; min-width: 84px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
