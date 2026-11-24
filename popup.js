@@ -16,7 +16,7 @@
     "ver", "status", "statusBox", "statusAction", "codes", "count", "parseNote", "pick", "demo", "clearCodes", "file",
     "suspects", "suspectTitle", "suspectList", "suspectMore", "suspectHint", "fixSuspects",
     "protect", "protectInfo", "freePace", "randomGap", "gapBlock", "gap", "gapValue", "skipLogged",
-    "statTotal", "statFresh", "statQueue", "skipNote", "quota", "eta", "start", "stop", "progressBox", "barWrap", "bar", "runTally",
+    "statTotal", "statFresh", "statQueue", "skipNote", "quota", "eta", "start", "pause", "resume", "stop", "retryErrors", "progressBox", "barWrap", "bar", "runTally",
     "progress", "logCount", "fAll", "fOk", "fError", "fUnknown", "log", "logMore", "export", "importLog", "clearLog",
     "logFile", "ask", "askText", "askYes", "askNo",
   ].forEach(function (id) { el[id] = $(id); });
@@ -260,11 +260,14 @@
       return;
     }
     if (runActive(now)) {
+      const paused = model.run && model.run.phase === "paused";
       setStatus(
-        model.tab.running
-          ? "Đang nhập code trên trang này. Đóng popup không làm dừng."
-          : "Đang nhập code ở một tab đổi quà khác. Bấm Dừng nếu muốn dừng.",
-        "run",
+        paused
+          ? "Đang tạm dừng. Bấm Tiếp tục để nhập nốt các code còn lại."
+          : model.tab.running
+            ? "Đang nhập code trên trang này. Đóng popup không làm dừng."
+            : "Đang nhập code ở một tab đổi quà khác. Bấm Dừng nếu muốn dừng.",
+        paused ? "warn" : "run",
       );
       return;
     }
@@ -388,20 +391,27 @@
       tone(el.eta, "");
     }
 
+    const paused = active && model.run && model.run.phase === "paused";
     const canStart = hasChrome && !active && !model.starting && model.tab.state === "ready" && pl.ok;
     el.start.disabled = !canStart;
-    put(el.start, active ? "Đang chạy…" : model.starting ? "Đang bắt đầu…" : canStart ? "Bắt đầu · " + pl.queue.length + " code" : "Bắt đầu");
+    put(el.start, paused ? "Đang tạm dừng" : active ? "Đang chạy…" : model.starting ? "Đang bắt đầu…" : canStart ? "Bắt đầu · " + pl.queue.length + " code" : "Bắt đầu");
+    const errors = P.errorCodes(model.log, SITE);
+    el.retryErrors.disabled = !hasChrome || active || !errors.length;
+    put(el.retryErrors, errors.length ? "Thử lại " + errors.length + " code lỗi" : "Thử lại code lỗi");
   }
 
   function renderRun(now) {
     const run = model.run;
     const active = runActive(now);
+    const paused = active && run && run.phase === "paused";
+    el.pause.hidden = !active || paused;
+    el.resume.hidden = !paused;
     el.stop.disabled = !hasChrome || !active || (model.stopAt && run && model.stopAt >= (run.startedAt || 0));
 
     const showRun = run && run.total && run.phase && run.phase !== "idle";
     el.progressBox.hidden = !showRun;
     if (showRun) {
-      const stale = !active && (run.phase === "running" || run.phase === "waiting");
+      const stale = !active && (run.phase === "running" || run.phase === "waiting" || run.phase === "paused");
       el.progressBox.dataset.phase = stale ? "stopped" : run.phase;
       const index = Math.min(run.total, run.index || 0);
       el.bar.style.width = Math.round((index / run.total) * 100) + "%";
@@ -417,14 +427,17 @@
     let line = "Chưa chạy.";
     let kind = "";
     if (run && run.phase && run.phase !== "idle") {
-      if (active && run.phase === "waiting" && run.wait) {
+      if (active && run.phase === "paused") {
+        line = run.note || "Đang tạm dừng. Bấm Tiếp tục để nhập nốt.";
+        kind = "warn";
+      } else if (active && run.phase === "waiting" && run.wait) {
         const left = Math.max(0, (run.wait.until - now) / 1000);
         line = run.wait.kind === "errors"
           ? "5 lỗi liên tiếp. Tự nhập tiếp sau " + P.formatTenth(left) + " giây."
           : "Nghỉ " + Math.ceil(left) + " giây trước code tiếp theo.";
       } else if (active) {
         line = run.note || "Đang chạy.";
-      } else if (run.phase === "running" || run.phase === "waiting") {
+      } else if (run.phase === "running" || run.phase === "waiting" || run.phase === "paused") {
         line = "Phiên trước bị ngắt giữa chừng (trang hoặc trình duyệt đã đóng).";
         kind = "warn";
       } else {
@@ -760,7 +773,52 @@
     el.stop.disabled = true;
     await storageSet({ [K.stop]: model.stopAt });
     if (model.tab.id && model.tab.running) send(model.tab.id, { kind: "stop" });
-    flash("Sẽ dừng sau code đang nhập, hoặc ngay nếu đang nghỉ.");
+    flash("Sẽ dừng sau code đang nhập, hoặc ngay nếu đang nghỉ hoặc đang tạm dừng.");
+  });
+
+  el.pause.addEventListener("click", async function () {
+    if (!hasChrome || !runActive()) return;
+    const at = Date.now();
+    await storageSet({ [K.pause]: at });
+    if (model.tab.id) send(model.tab.id, { kind: "pause" });
+    flash("Sẽ tạm dừng sau code đang nhập, hoặc ngay nếu đang nghỉ.");
+  });
+
+  el.resume.addEventListener("click", async function () {
+    if (!hasChrome || !runActive()) return;
+    const at = Date.now();
+    await storageSet({ [K.resume]: at });
+    if (model.tab.id) send(model.tab.id, { kind: "resume" });
+    flash("Tiếp tục nhập các code còn lại.");
+  });
+
+  el.retryErrors.addEventListener("click", async function () {
+    if (runActive()) {
+      flash("Dừng hoặc chờ hết phiên trước khi đưa code lỗi vào ô.", "warn");
+      return;
+    }
+    const codes = P.errorCodes(model.log, SITE);
+    if (!codes.length) {
+      flash("Không có code lỗi để thử lại.", "warn");
+      return;
+    }
+    const next = codes.join("\n");
+    const current = el.codes.value.trim();
+    if (current && current !== next) {
+      const ok = await ask("Thay danh sách đang có bằng " + codes.length + " code lỗi?", "Thay danh sách");
+      if (!ok) return;
+    }
+    const turnedOff = el.skipLogged.checked;
+    if (turnedOff) {
+      el.skipLogged.checked = false;
+      persistSettings();
+    }
+    setCodes(next);
+    flash(
+      "Đã đưa " + codes.length + " code lỗi vào ô."
+        + (turnedOff ? " Đã tắt “Bỏ qua code đã có trong log” để nhập lại được. Bật lại sau khi chạy xong nếu muốn." : " Bấm Bắt đầu để nhập lại."),
+      "ok",
+    );
   });
 
   el.export.addEventListener("click", function () {

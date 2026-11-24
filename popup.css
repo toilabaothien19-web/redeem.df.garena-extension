@@ -254,7 +254,8 @@ button.primary {
 
 button.primary:hover:not(:disabled) { background: var(--accent-light); }
 
-#stop { min-height: 40px; min-width: 76px; }
+#pause, #resume, #stop { min-height: 40px; min-width: 76px; }
+#retryErrors { width: 100%; margin-top: 6px; }
 
 button.small {
   min-height: 26px;
@@ -371,7 +372,8 @@ button.small {
   transition: width 0.4s ease;
 }
 
-.progress[data-phase="waiting"] .bar i { background: var(--warn); }
+.progress[data-phase="waiting"] .bar i,
+.progress[data-phase="paused"] .bar i { background: var(--warn); }
 .progress[data-phase="stopped"] .bar i { background: var(--danger); }
 
 /* ---------- Nhật ký ---------- */

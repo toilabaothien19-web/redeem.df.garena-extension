@@ -2,6 +2,11 @@
 
 Từ bản 1.0.0, số phiên bản được đánh lại. Mã trước khi viết lại, trước đây đánh số 1.9.9, nay là **0.5.0 beta**. Các mốc cũ 1.0 đến 1.9.9 vẫn giữ ở cuối file với số cũ, chỉ để tra cứu.
 
+## 1.0.5
+
+- Tạm dừng và tiếp tục một phiên đang chạy. Code đang gửi thì gửi xong rồi mới dừng. Đang nghỉ thì đồng hồ nghỉ, bấm tiếp tục thì đếm nốt thời gian còn lại.
+- Nút thử lại code lỗi: đưa vào ô những code có kết quả mới nhất là lỗi. Code đã dùng được không bị đưa vào. Nếu đang bật bỏ qua code đã có trong log thì tắt mục đó để những code này nhập lại được.
+
 ## 1.0.4
 
 - Bỏ trần số code trong 24 giờ. Trước đây bật bảo vệ chỉ được 60 code mỗi ngày, tắt bảo vệ 200 code mỗi ngày. Trần mỗi lần bấm và mỗi 60 phút giữ nguyên.

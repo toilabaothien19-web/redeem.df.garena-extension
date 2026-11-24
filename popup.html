@@ -100,8 +100,11 @@
       <p id="eta" class="note"></p>
       <div class="row">
         <button type="button" id="start" class="primary" disabled>Bắt đầu</button>
+        <button type="button" id="pause" hidden>Tạm dừng</button>
+        <button type="button" id="resume" class="primary" hidden>Tiếp tục</button>
         <button type="button" id="stop" disabled>Dừng</button>
       </div>
+      <button type="button" id="retryErrors" disabled>Thử lại code lỗi</button>
       <div id="progressBox" class="progress" hidden>
         <div class="bar" role="progressbar" aria-label="Tiến độ" aria-valuemin="0" id="barWrap">
           <i id="bar"></i>

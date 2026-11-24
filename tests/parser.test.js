@@ -383,8 +383,20 @@ test("gộp log giữ tối đa số dòng cho phép, bỏ dòng cũ nhất", ()
 test("phiên đang chạy mà lâu không cập nhật thì coi như đã ngắt", () => {
   assert.equal(P.isRunActive({ phase: "running", updatedAt: NOW - 1000 }, NOW), true);
   assert.equal(P.isRunActive({ phase: "waiting", updatedAt: NOW - 10 * MIN }, NOW), false);
+  assert.equal(P.isRunActive({ phase: "paused", updatedAt: NOW - 1000 }, NOW), true);
   assert.equal(P.isRunActive({ phase: "done", updatedAt: NOW }, NOW), false);
   assert.equal(P.isRunActive(null, NOW), false);
+});
+
+test("code lỗi là code có trạng thái tốt nhất là lỗi", () => {
+  const log = [
+    { code: "DFOK1", status: "error", site: "garena" },
+    { code: "DFOK1", status: "ok", site: "garena" },
+    { code: "DFBAD", status: "error", site: "garena" },
+    { code: "DFWAIT", status: "unknown", site: "garena" },
+    { code: "DFINTL", status: "error", site: "intl" },
+  ];
+  assert.deepEqual(P.errorCodes(log, "garena"), ["DFBAD"]);
 });
 
 test("chỉ nhận đúng trang đổi code của Garena", () => {

@@ -50,7 +50,7 @@ async function settle() {
   }
   clearBadge();
   await migrateLog(data[K.log]);
-  if (run && (run.phase === "running" || run.phase === "waiting")) {
+  if (run && (run.phase === "running" || run.phase === "waiting" || run.phase === "paused")) {
     await chrome.storage.local.set({
       [K.run]: Object.assign({}, run, {
         phase: "stopped",

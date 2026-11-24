@@ -1,4 +1,4 @@
-DF Code Garena 1.0.4
+DF Code Garena 1.0.5
 ====================
 
 Tiện ích chỉ nhập code khi tab Trung Tâm Đổi Quà đang mở:
@@ -30,10 +30,14 @@ Dùng
    30 code mỗi 60 phút, không giới hạn theo ngày, 5 lỗi liên tiếp thì tự nghỉ 30–60 giây rồi nhập tiếp.
    Tắt bảo vệ thì tối đa 100 code mỗi lần và có hỏi lại. Không thể cam kết tài khoản không bị khóa.
 5. Bấm Bắt đầu. Nút ghi rõ lần này nhập bao nhiêu code. Có thể đóng popup, việc nhập vẫn chạy.
+   Bấm Tạm dừng để giữ các code còn lại: đang nghỉ thì dừng ngay, đang nhập thì dừng sau code đó.
+   Bấm Tiếp tục để nhập nốt. Bấm Dừng ở bất kỳ tab nào để dừng hẳn.
    Để tab đổi code mở trong lúc chạy. Không mở hai tab đổi quà để chạy cùng lúc.
    Biểu tượng xanh lá, số trên biểu tượng là số code còn lại. Biểu tượng chuyển đỏ khi có dù chỉ
    một code lỗi hoặc chưa rõ, và giữ đỏ tới lần chạy sau hoặc khi xóa log.
-6. Bấm Dừng ở bất kỳ tab nào để dừng. Đang nghỉ thì dừng ngay, đang nhập thì dừng sau code đó.
+6. Bấm Thử lại code lỗi để đưa vào ô những code có kết quả mới nhất là lỗi, rồi bấm Bắt đầu.
+   Code đã dùng được không bị đưa vào. Nếu đang bật bỏ qua code đã có trong log, mục đó được tắt
+   để những code lỗi này nhập lại được. Bật lại sau khi chạy xong nếu muốn.
 7. Nhật ký ghi nguyên câu trên trang và câu máy chủ, kèm mã số. Lọc theo Dùng được, Lỗi, Chưa rõ.
    Chưa rõ nghĩa là không đọc được kết quả, code chưa được gửi, hoặc trang báo lỗi tạm thời
    (quá nhiều lần, thử lại sau, lỗi máy chủ); lần sau vẫn nhập lại.

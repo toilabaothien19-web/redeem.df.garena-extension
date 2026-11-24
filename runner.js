@@ -20,6 +20,7 @@
     running: false,
     starting: false,
     stopping: false,
+    paused: false,
     owner: "",
     startedAt: 0,
     run: null,
@@ -193,19 +194,48 @@
     });
   }
 
-  /* Ghi một lần mốc kết thúc để popup tự đếm ngược; chỉ nhắc lại mỗi 10 giây để báo phiên còn sống. */
+  /* Ghi mốc kết thúc để popup tự đếm ngược. Tạm dừng thì đồng hồ nghỉ, bấm tiếp tục thì đếm nốt. */
+  async function hold(base) {
+    if (!state.paused || state.stopping) return !state.stopping;
+    const snap = base();
+    const left = Math.max(0, snap.total - snap.index);
+    await setRun(base({
+      phase: "paused",
+      wait: null,
+      note: "Đang tạm dừng." + (left ? " Còn " + left + " code." : "") + " Bấm Tiếp tục để nhập nốt.",
+    }));
+    badge(left, "wait");
+    while (state.paused && !state.stopping) {
+      await nap(P.LIMITS.heartbeatMs);
+      if (state.paused && !state.stopping && state.run) await setRun(state.run);
+    }
+    return !state.stopping;
+  }
+
   async function rest(seconds, kind, base) {
-    const until = Date.now() + Math.max(0, Number(seconds) || 0) * 1000;
-    const note = kind === "errors"
-      ? "5 lỗi liên tiếp. Tự nhập tiếp sau " + P.formatTenth(seconds) + " giây."
-      : "Nghỉ " + Math.round(seconds) + " giây trước code tiếp theo.";
-    await setRun(Object.assign({}, base, { phase: "waiting", wait: { kind: kind, until: until, seconds: seconds }, note: note }));
-    badge(base.total - base.index, "wait");
+    let until = Date.now() + Math.max(0, Number(seconds) || 0) * 1000;
+    function noteFor(leftSec) {
+      return kind === "errors"
+        ? "5 lỗi liên tiếp. Tự nhập tiếp sau " + P.formatTenth(leftSec) + " giây."
+        : "Nghỉ " + Math.ceil(leftSec) + " giây trước code tiếp theo.";
+    }
     while (!state.stopping) {
+      if (state.paused) {
+        const leftMs = Math.max(0, until - Date.now());
+        if (!(await hold(base))) return false;
+        until = Date.now() + leftMs;
+        continue;
+      }
       const left = until - Date.now();
       if (left <= 0) break;
+      await setRun(Object.assign({}, base(), {
+        phase: "waiting",
+        wait: { kind: kind, until: until, seconds: seconds },
+        note: noteFor(left / 1000),
+      }));
+      badge(base().total - base().index, "wait");
       await nap(Math.min(left, P.LIMITS.heartbeatMs));
-      if (!state.stopping && until - Date.now() > 0) await setRun(state.run);
+      if (!state.stopping && !state.paused && until - Date.now() > 0) await setRun(state.run);
     }
     return !state.stopping;
   }
@@ -243,6 +273,10 @@
     try {
       for (let i = 0; i < queue.length; i++) {
         if (state.stopping) {
+          end = { phase: "stopped", note: stoppedNote() };
+          break;
+        }
+        if (!(await hold(base))) {
           end = { phase: "stopped", note: stoppedNote() };
           break;
         }
@@ -291,13 +325,13 @@
         if (i === queue.length - 1) break;
 
         if (verdict.action === "pause") {
-          if (!(await rest(P.errorPause(), "errors", base()))) {
+          if (!(await rest(P.errorPause(), "errors", base))) {
             end = { phase: "stopped", note: stoppedNote("Đã dừng trong lúc nghỉ sau 5 lỗi.") };
             break;
           }
           continue;
         }
-        if (!(await rest(P.pickGap(settings), "gap", base()))) {
+        if (!(await rest(P.pickGap(settings), "gap", base))) {
           end = { phase: "stopped", note: stoppedNote() };
           break;
         }
@@ -313,6 +347,7 @@
       badge("");
       state.running = false;
       state.stopping = false;
+      state.paused = false;
       state.wake = null;
     }
   }
@@ -339,6 +374,7 @@
       state.owner = randomHex(8);
       state.startedAt = Date.now();
       state.stopping = false;
+      state.paused = false;
       state.running = true;
       await setRun({
         phase: "running",
@@ -366,6 +402,19 @@
   function requestStop() {
     if (!state.running) return;
     state.stopping = true;
+    state.paused = false;
+    if (state.wake) state.wake();
+  }
+
+  function requestPause() {
+    if (!state.running || state.stopping) return;
+    state.paused = true;
+    if (state.wake) state.wake();
+  }
+
+  function requestResume() {
+    if (!state.running || state.stopping) return;
+    state.paused = false;
     if (state.wake) state.wake();
   }
 
@@ -386,6 +435,16 @@
       sendResponse({ ok: true });
       return;
     }
+    if (msg.kind === "pause") {
+      requestPause();
+      sendResponse({ ok: true });
+      return;
+    }
+    if (msg.kind === "resume") {
+      requestResume();
+      sendResponse({ ok: true });
+      return;
+    }
     if (msg.kind === "start") {
       start(msg).then(sendResponse, function () {
         sendResponse({ ok: false, reason: "Không bắt đầu được. Tải lại trang đổi code rồi thử lại." });
@@ -394,11 +453,21 @@
     }
   });
 
-  /* Popup ở bất kỳ tab nào cũng dừng được: nó ghi mốc thời gian vào khóa dfcode.stop. */
+  /* Popup ở bất kỳ tab nào cũng dừng, tạm dừng hoặc tiếp tục được qua storage. */
   chrome.storage.onChanged.addListener(function (changes, area) {
-    if (area !== "local" || !changes[K.stop]) return;
-    const at = Number(changes[K.stop].newValue) || 0;
-    if (state.running && at >= state.startedAt) requestStop();
+    if (area !== "local") return;
+    if (changes[K.stop]) {
+      const at = Number(changes[K.stop].newValue) || 0;
+      if (state.running && at >= state.startedAt) requestStop();
+    }
+    if (changes[K.pause]) {
+      const at = Number(changes[K.pause].newValue) || 0;
+      if (state.running && at >= state.startedAt) requestPause();
+    }
+    if (changes[K.resume]) {
+      const at = Number(changes[K.resume].newValue) || 0;
+      if (state.running && at >= state.startedAt) requestResume();
+    }
   });
 
   window.addEventListener("pagehide", function () {

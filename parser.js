@@ -46,6 +46,8 @@
     run: "dfcode.run",
     attempts: "dfcode.attempts",
     stop: "dfcode.stop",
+    pause: "dfcode.pause",
+    resume: "dfcode.resume",
   });
   /* Khóa của bản cũ, xóa khi gặp. */
   const LEGACY_KEYS = Object.freeze(["dfcode.restUntil", "dfcode.skipOk"]);
@@ -1150,6 +1152,16 @@
     return map;
   }
 
+  /* Code có trạng thái tốt nhất là lỗi. Code đã dùng được hoặc chỉ chưa rõ không nằm trong danh sách. */
+  function errorCodes(log, site) {
+    const out = [];
+    const list = (Array.isArray(log) ? log : []).filter(function (e) { return onSite(e, site); });
+    bestByCode(list).forEach(function (e) {
+      if (normStatus(e.status) === "error" && isCodeToken(e.code)) out.push(e.code);
+    });
+    return out;
+  }
+
   /* Đối chiếu danh sách code với log: mỗi code theo trạng thái tốt nhất trong log, hoặc chưa có. */
   function overlap(codes, log, site) {
     const best = bestByCode((Array.isArray(log) ? log : []).filter(function (e) { return e && onSite(e, site); }));
@@ -1337,7 +1349,7 @@
 
   function isRunActive(run, now) {
     if (!run || typeof run !== "object") return false;
-    if (run.phase !== "running" && run.phase !== "waiting") return false;
+    if (run.phase !== "running" && run.phase !== "waiting" && run.phase !== "paused") return false;
     const t = typeof now === "number" ? now : Date.now();
     return t - (Number(run.updatedAt) || 0) < LIMITS.staleMs;
   }
@@ -1447,6 +1459,7 @@
     entryTime: entryTime,
     tally: tally,
     bestByCode: bestByCode,
+    errorCodes: errorCodes,
     overlap: overlap,
     formatLog: formatLog,
     parseLog: parseLog,
