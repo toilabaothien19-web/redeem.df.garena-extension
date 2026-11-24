@@ -1,4 +1,4 @@
-DF Code Garena 1.0.5
+DF Code Garena 1.0.6
 ====================
 
 Tiện ích chỉ nhập code khi tab Trung Tâm Đổi Quà đang mở:
@@ -41,8 +41,8 @@ Dùng
 7. Nhật ký ghi nguyên câu trên trang và câu máy chủ, kèm mã số. Lọc theo Dùng được, Lỗi, Chưa rõ.
    Chưa rõ nghĩa là không đọc được kết quả, code chưa được gửi, hoặc trang báo lỗi tạm thời
    (quá nhiều lần, thử lại sau, lỗi máy chủ); lần sau vẫn nhập lại.
-8. Bấm Xuất log để tải file .txt. Đọc file log trước khi chia sẻ. Xóa log thì các code đó
-   không còn được bỏ qua khi chạy lại, nên xuất log trước khi xóa.
+8. Bấm Xuất CSV để tải file .csv, mở được bằng Excel. Đọc file trước khi chia sẻ. Xóa log thì các code đó
+   không còn được bỏ qua khi chạy lại, nên xuất trước khi xóa. File .txt của bản cũ vẫn nạp được.
 9. Bấm Tải log lên để nạp lại file đó (tối đa 2 MB). Popup cho biết bao nhiêu code trong danh sách
    đã có trong log. Lần chạy sau bỏ qua code đã thành công và code lỗi.
 

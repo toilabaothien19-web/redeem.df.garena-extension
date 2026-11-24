@@ -1228,6 +1228,134 @@
     return lines.join("\n");
   }
 
+  function csvCell(value) {
+    const text = String(value == null ? "" : value);
+    if (/[",\r\n;]/.test(text)) return '"' + text.replace(/"/g, '""') + '"';
+    return text;
+  }
+
+  /* CSV mở được bằng Excel: BOM để khỏi lỗi chữ, dòng sep=, để Excel tiếng Việt tách đúng cột. */
+  function formatCsv(entries) {
+    const list = Array.isArray(entries) ? entries.filter(Boolean) : [];
+    const lines = ["sep=,"];
+    lines.push(["code", "trạng thái", "kết quả", "thời gian", "bản"].map(csvCell).join(","));
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !isCodeToken(e.code)) continue;
+      const status = normStatus(e.status);
+      const label = status === "ok" ? "Dùng được" : status === "unknown" ? "Chưa rõ" : "Lỗi";
+      lines.push([
+        e.code,
+        label,
+        sanitizeText(e.detail),
+        entryTime(e),
+        normSite(e.site) === "intl" ? "Quốc tế" : "Garena",
+      ].map(csvCell).join(","));
+    }
+    return "\uFEFF" + lines.join("\r\n") + "\r\n";
+  }
+
+  function parseCsvRows(text, sep) {
+    const rows = [];
+    let row = [];
+    let field = "";
+    let quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text.charAt(i);
+      if (quoted) {
+        if (c === '"') {
+          if (text.charAt(i + 1) === '"') {
+            field += '"';
+            i++;
+          } else quoted = false;
+        } else field += c;
+      } else if (c === '"') {
+        quoted = true;
+      } else if (c === sep) {
+        row.push(field);
+        field = "";
+      } else if (c === "\n") {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = "";
+      } else if (c !== "\r") {
+        field += c;
+      }
+    }
+    if (field.length || row.length) {
+      row.push(field);
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function csvHeaderKind(cell) {
+    const name = squash(cell).toLowerCase();
+    if (name === "code" || name === "mã" || name === "ma") return "code";
+    if (/^(?:trạng thái|trang thai|status)$/.test(name)) return "status";
+    if (/^(?:kết quả|ket qua|thông báo|thong bao|detail|message)$/.test(name)) return "detail";
+    if (/^(?:thời gian|thoi gian|time|at)$/.test(name)) return "time";
+    if (/^(?:bản|ban|site)$/.test(name)) return "site";
+    return "";
+  }
+
+  function csvStatus(text) {
+    const name = squash(text).toLowerCase();
+    if (name === "ok" || /^(?:dùng được|dung duoc|thành công|thanh cong|success|successful)$/.test(name)) return "ok";
+    if (name === "unknown" || /^(?:chưa rõ|chua ro|chưa|chua)$/.test(name)) return "unknown";
+    if (name === "error" || /^(?:lỗi|loi|thất bại|that bai|fail|failed)$/.test(name)) return "error";
+    return "";
+  }
+
+  function csvSite(text) {
+    const name = squash(text).toLowerCase();
+    if (/^(?:quốc tế|quoc te|intl|qt)$/.test(name)) return "intl";
+    return "garena";
+  }
+
+  /* null nếu không phải CSV của tiện ích này. File chỉ có tiêu đề thì trả mảng rỗng. */
+  function parseCsvLog(raw) {
+    let text = raw.replace(/^\uFEFF/, "");
+    let sep = ",";
+    const firstBreak = text.search(/\r?\n/);
+    const firstLine = (firstBreak === -1 ? text : text.slice(0, firstBreak)).trim();
+    const sepLine = firstLine.match(/^sep=(.)$/i);
+    if (sepLine) {
+      sep = sepLine[1] === ";" ? ";" : ",";
+      text = text.slice(firstBreak + 1).replace(/^\n/, "");
+    } else {
+      const commas = (firstLine.match(/,/g) || []).length;
+      const semis = (firstLine.match(/;/g) || []).length;
+      if (semis > commas) sep = ";";
+    }
+    const rows = parseCsvRows(text, sep);
+    if (!rows.length) return null;
+    const header = rows[0].map(csvHeaderKind);
+    const codeAt = header.indexOf("code");
+    const statusAt = header.indexOf("status");
+    if (codeAt === -1 || statusAt === -1) return null;
+    const detailAt = header.indexOf("detail");
+    const timeAt = header.indexOf("time");
+    const siteAt = header.indexOf("site");
+    const out = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row.some(function (cell) { return squash(cell); })) continue;
+      const status = csvStatus(row[statusAt] || "");
+      if (!status) continue;
+      const entry = normalizeEntry({
+        code: squash(row[codeAt] || ""),
+        status: status,
+        detail: detailAt === -1 ? "" : row[detailAt],
+        atText: timeAt === -1 ? "" : row[timeAt],
+        site: siteAt === -1 ? "garena" : csvSite(row[siteAt] || ""),
+      });
+      if (entry) out.push(entry);
+    }
+    return out;
+  }
+
   const INTL_SECTION = /^(?:QUỐC TẾ|QUOC TE)\s*[—-]\s*/i;
 
   /* Tên mục trong file log: loại mục và bản (mục của bản quốc tế bắt đầu bằng "QUỐC TẾ —"). */
@@ -1253,6 +1381,8 @@
   function parseLog(text) {
     let raw = String(text == null ? "" : text).replace(/^\uFEFF/, "");
     if (raw.length > LIMITS.maxLogText) raw = raw.slice(0, LIMITS.maxLogText);
+    const csv = parseCsvLog(raw);
+    if (csv) return csv;
     const lines = raw.split(/\r\n|\r|\n/);
     let section = "";
     let sectionSite = "garena";
@@ -1462,6 +1592,7 @@
     errorCodes: errorCodes,
     overlap: overlap,
     formatLog: formatLog,
+    formatCsv: formatCsv,
     parseLog: parseLog,
     mergeLogs: mergeLogs,
     isRunActive: isRunActive,

@@ -327,6 +327,34 @@ test("đọc lại đúng file vừa xuất, không mất dòng nào", () => {
   assert.equal(back[0].at, new Date(NOW).toISOString());
 });
 
+test("xuất CSV rồi nạp lại đủ, kể cả dấu phẩy và ngoặc kép trong câu kết quả", () => {
+  const messy = SAMPLE.concat([
+    { at: new Date(NOW + 4000).toISOString(), code: "DFQUOTE1", status: "error", detail: "Hết hạn, \"không\" dùng được", site: "intl" },
+  ]);
+  const csv = P.formatCsv(messy);
+  assert.match(csv, /^\uFEFFsep=,\r\ncode,trạng thái,kết quả,thời gian,bản\r\n/);
+  const back = P.parseLog(csv);
+  assert.deepEqual(back.map((e) => e.code + ":" + e.status + ":" + e.site), [
+    "DFOK0001:ok:garena",
+    "DFBAD002:error:garena",
+    "DFWAIT03:unknown:garena",
+    "DFBAD002:ok:garena",
+    "DFQUOTE1:error:intl",
+  ]);
+  assert.equal(back[4].detail, "Hết hạn, \"không\" dùng được");
+  assert.equal(P.entryTime(back[0]), "19/11/2026 14:00:00");
+  const semi = [
+    "code;trạng thái;kết quả;thời gian;bản",
+    "DFSEMI01;Lỗi;\"Câu, có dấu phẩy\";19/11/2026 14:05:06;Garena",
+  ].join("\r\n");
+  const fromSemi = P.parseLog(semi);
+  assert.equal(fromSemi.length, 1);
+  assert.equal(fromSemi[0].code, "DFSEMI01");
+  assert.equal(fromSemi[0].status, "error");
+  assert.equal(fromSemi[0].detail, "Câu, có dấu phẩy");
+  assert.equal(P.entryTime(fromSemi[0]), "19/11/2026 14:05:06");
+});
+
 test("gộp log nạp từ file không nhân đôi lượt đã có", () => {
   const text = P.formatLog(SAMPLE, {});
   const merged = P.mergeLogs(SAMPLE, P.parseLog(text));

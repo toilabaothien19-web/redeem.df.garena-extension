@@ -2,6 +2,10 @@
 
 Từ bản 1.0.0, số phiên bản được đánh lại. Mã trước khi viết lại, trước đây đánh số 1.9.9, nay là **0.5.0 beta**. Các mốc cũ 1.0 đến 1.9.9 vẫn giữ ở cuối file với số cũ, chỉ để tra cứu.
 
+## 1.0.6
+
+- Nút Xuất log đổi thành Xuất CSV. File mở được bằng Excel, có cột code, trạng thái, kết quả, thời gian và bản. Tải log lên vẫn đọc được file .txt cũ và file CSV mới.
+
 ## 1.0.5
 
 - Tạm dừng và tiếp tục một phiên đang chạy. Code đang gửi thì gửi xong rồi mới dừng. Đang nghỉ thì đồng hồ nghỉ, bấm tiếp tục thì đếm nốt thời gian còn lại.

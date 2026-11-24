@@ -142,7 +142,7 @@
   }
 
   function download(name, text) {
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -157,7 +157,7 @@
     const d = new Date();
     const p = function (n) { return String(n).padStart(2, "0"); };
     return "df-code-log-" + d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate())
-      + "_" + p(d.getHours()) + "-" + p(d.getMinutes()) + "-" + p(d.getSeconds()) + ".txt";
+      + "_" + p(d.getHours()) + "-" + p(d.getMinutes()) + "-" + p(d.getSeconds()) + ".csv";
   }
 
   function readTextFile(file) {
@@ -535,7 +535,7 @@
 
     const matching = model.filter === "all" ? counts.all : counts[model.filter];
     el.logMore.hidden = matching <= VIEW_CAP;
-    put(el.logMore, matching > VIEW_CAP ? "Đang hiện " + VIEW_CAP + "/" + matching + " dòng mới nhất. Xuất log để xem đủ." : "");
+    put(el.logMore, matching > VIEW_CAP ? "Đang hiện " + VIEW_CAP + "/" + matching + " dòng mới nhất. Xuất CSV để xem đủ." : "");
     renderLogButtons(Date.now());
   }
 
@@ -823,13 +823,9 @@
 
   el.export.addEventListener("click", function () {
     if (!model.log.length) return;
-    const text = P.formatLog(model.log, {
-      exportedAt: new Date().toISOString(),
-      version: VERSION,
-      settings: (model.meta && model.meta.settings) || settings(),
-    });
+    const text = P.formatCsv(model.log);
     download(stampName(), text);
-    flash("Đã xuất log. Đọc file trước khi chia sẻ.", "ok");
+    flash("Đã xuất CSV. Mở bằng Excel được. Đọc file trước khi chia sẻ.", "ok");
   });
 
   el.importLog.addEventListener("click", function () { el.logFile.click(); });
@@ -875,7 +871,7 @@
     }
     const sure = await ask(
       "Xóa toàn bộ " + model.log.length + " lượt trong log? Sau khi xóa, các code này không còn được bỏ qua khi chạy lại."
-        + " Hạn mức đã dùng vẫn được giữ. Muốn giữ lại thì bấm Hủy rồi Xuất log trước.",
+        + " Hạn mức đã dùng vẫn được giữ. Muốn giữ lại thì bấm Hủy rồi Xuất CSV trước.",
       "Xóa log",
     );
     if (!sure) return;

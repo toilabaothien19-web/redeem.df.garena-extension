@@ -6,7 +6,7 @@
 
 Tiện ích Chrome / Edge để nhập danh sách code Delta Force trên trang đổi quà chính thức của Garena. Mã nguồn để công khai, không qua bước build: file bạn đọc trên GitHub là file được cài vào trình duyệt.
 
-Phiên bản hiện tại: **1.0.5** · [Nhật ký thay đổi](CHANGELOG.md)
+Phiên bản hiện tại: **1.0.6** · [Nhật ký thay đổi](CHANGELOG.md)
 
 Bản 1.0.3 chỉ chạy trên trang Garena. Bản **1.1.0** (pre-release trên Releases) có thêm bản quốc tế thử nghiệm cho trang playdeltaforce.com; chỉ cài bản đó nếu bạn cần trang quốc tế.
 
@@ -48,7 +48,7 @@ Tiện ích vẫn là công cụ nhập tự động trên tài khoản bạn đ
 
 Cần Chrome hoặc Edge từ phiên bản 111. Không dùng được trên Chrome điện thoại.
 
-1. Tải `df-code-garena-1.0.5.zip` từ [Releases](https://github.com/toilabaothien19-web/redeem.df.garena/releases) của kho này. Không cài file đính kèm trong bài viết lạ, nhóm chat, hoặc kho fork chưa đối chiếu.
+1. Tải `df-code-garena-1.0.6.zip` từ [Releases](https://github.com/toilabaothien19-web/redeem.df.garena/releases) của kho này. Không cài file đính kèm trong bài viết lạ, nhóm chat, hoặc kho fork chưa đối chiếu.
 2. Đối chiếu hash như mục [Tự kiểm tra an toàn](#tự-kiểm-tra-an-toàn). Hash lệch thì xóa và không dùng.
 3. Nếu máy đã có thư mục bản cũ, xóa thư mục đó. Không giải nén đè.
 4. Giải nén. Bên trong là thư mục `df-code-garena`. Tên file zip có số phiên bản, tên thư mục thì giữ nguyên.
@@ -136,7 +136,7 @@ Nút **Sửa tự động** sửa mọi code sửa được, chỉ chừa chữ 
 
 **Đối chiếu với log.** Khi bật "Bỏ qua code đã có trong log", mỗi code trong danh sách được so với log theo kết quả tốt nhất của nó: đã dùng được hoặc đã lỗi thì bỏ qua, chưa rõ hoặc chưa có thì nhập. Ngay dưới ô số liệu, popup ghi rõ bỏ qua bao nhiêu code và vì sao. So khớp phân biệt chữ hoa/thường, để một code gõ sai hoa/thường không chặn code đúng. Code chưa có trong log được nhập trước; code từng ghi chưa rõ xếp xuống cuối, để một code cứ gặp lỗi tạm thời không chặn các code mới.
 
-**Xuất log** ra file `.txt` gồm các phần DÙNG ĐƯỢC, LỖI, CHƯA RÕ (sẽ nhập lại), rồi CHI TIẾT từng lượt. Đọc file trước khi chia sẻ.
+**Xuất CSV** thay cho file .txt. Cột là code, trạng thái, kết quả, thời gian và bản. Dòng đầu `sep=,` để Excel tiếng Việt tách đúng cột. Đọc file trước khi chia sẻ. File .txt xuất từ bản cũ vẫn nạp lại được.
 
 Cập nhật tiện ích mà quên bấm tải lại thì lần mở popup đầu tiên cũng tự sửa log lưu từ bản cũ.
 
@@ -158,11 +158,11 @@ File `SHA256SUMS` nằm **trong** zip chỉ chứng minh các file khớp với 
 Hash của file zip:
 
 ```bash
-sha256sum df-code-garena-1.0.5.zip
+sha256sum df-code-garena-1.0.6.zip
 ```
 
 ```powershell
-(Get-FileHash -Algorithm SHA256 .\df-code-garena-1.0.5.zip).Hash.ToLower()
+(Get-FileHash -Algorithm SHA256 .\df-code-garena-1.0.6.zip).Hash.ToLower()
 ```
 
 Hash từng file, đứng trong thư mục `df-code-garena` vừa giải nén:
